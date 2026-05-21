@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Stellantis Mapping Engine - v7.8</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @keyframes super-flash {
+            0% { opacity: 0; transform: scale(0.9); }
+            20% { opacity: 0.8; transform: scale(1.1); background-color: #16a34a; }
+            40% { opacity: 0; transform: scale(1); }
+            60% { opacity: 0.8; transform: scale(1.1); background-color: #16a34a; }
+            100% { opacity: 0; transform: scale(1); }
+        }
+        .flash-overlay {
+            position: absolute;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(22, 163, 74, 0.5);
+            animation: super-flash 0.8s ease-out forwards;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .inspector-blur { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.98); }
+        
+        .grid-fixed { table-layout: fixed; width: 100%; border-spacing: 0; }
+        .col-code { width: 60px; min-width: 60px; }
+        .col-label { width: 230px; min-width: 230px; }
+        .col-data { width: 105px; min-width: 105px; }
+
+        .switch { position: relative; display: inline-block; width: 28px; height: 16px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 10px; width: 10px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2563eb; }
+        input:checked + .slider:before { transform: translateX(12px); }
+
+        .acc-item-selected:hover { background-color: #1e40af !important; }
+
+        .acc-label-container { 
+            position: relative; flex: 1; min-width: 0; height: 1.5rem; display: flex; align-items: center;
+        }
+        .acc-label-text { 
+            display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 10;
+        }
+        .acc-row:hover .acc-label-text {
+            position: absolute; left: 0; width: auto; min-width: 100%; padding-right: 20px; z-index: 100;
+            background: inherit; box-shadow: 15px 0 15px -10px rgba(0,0,0,0.2); overflow: visible;
+        }
+
+        .help-tooltip { visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s; }
+        .help-trigger:hover .help-tooltip { visibility: visible; opacity: 1; }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen overflow-hidden font-sans text-slate-800">
+
+<div class="flex flex-col h-full">
+    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-[100]">
+        <div class="flex items-center gap-2">
+            <input type="file" id="gridInput" accept=".xlsx, .xls" class="hidden">
+            <button onclick="document.getElementById('gridInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm">
+                <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-emerald-600"></i> Grille
+            </button>
+            <input type="file" id="balanceInput" accept=".csv, .xlsx, .xls" class="hidden">
+            <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm">
+                <i data-lucide="file-up" class="w-3.5 h-3.5 text-blue-600"></i> Balance
+            </button>
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+            
+            <div class="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1 shadow-inner">
+                <div class="flex flex-col">
+                    <span class="text-[8px] font-black text-blue-400 uppercase leading-none">Comptes</span>
+                    <span id="totalAcc" class="text-[11px] font-black text-blue-700">0</span>
+                </div>
+                <div class="w-px h-6 bg-blue-200"></div>
+                
+                <div class="flex items-center gap-1.5 relative group">
+                    <div class="help-trigger">
+                        <i data-lucide="help-circle" class="w-3.5 h-3.5 text-blue-400 cursor-help hover:text-blue-600"></i>
+                        <div class="help-tooltip absolute left-0 top-10 w-56 p-2.5 bg-slate-900/95 text-white text-[10px] rounded-lg shadow-2xl backdrop-blur-sm z-[110] pointer-events-none">
+                            <p class="font-bold mb-1 text-blue-400 italic text-[11px]">Masque de formatage :</p>
+                            <p class="opacity-90 mb-2 leading-relaxed text-slate-300 text-[9px]">Définit les segments (points).<br>Ex: <span class="text-emerald-400">5.1.6</span> pour un compte à 12 car.</p>
+                            <div class="bg-white/10 p-2 rounded border border-white/10 font-mono text-[9px]">
+                                <span class="text-slate-400 italic">Entrée brute :</span><br>
+                                <span class="text-white">7071001654321</span><br>
+                                <div class="flex justify-center my-1"><i data-lucide="arrow-down" class="w-3 h-3 text-blue-400"></i></div>
+                                <span class="text-slate-400 italic">Résultat :</span><br>
+                                <span class="text-emerald-400 font-bold">70710.0.165432.1</span>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="text" id="maskInput" placeholder="Masque" 
+                        class="w-20 bg-white border border-blue-200 rounded px-1.5 py-0.5 text-[10px] font-black text-blue-800 outline-none focus:border-blue-500 shadow-sm placeholder:text-blue-200" 
+                        oninput="this.value = this.value.replace(/[^0-9.]/g, ''); renderAccounts()">
+                </div>
+
+                <div class="w-px h-6 bg-blue-200"></div>
+                <div class="flex items-center gap-2">
+                    <label class="switch"><input type="checkbox" id="unmappedOnly" onchange="renderAccounts()"><span class="slider"></span></label>
+                    <span class="text-[9px] font-bold text-blue-700 uppercase">Non-mappés</span>
+                </div>
+                <div class="w-px h-6 bg-blue-200"></div>
+                <div class="flex flex-col items-end">
+                    <span class="text-[8px] font-black text-blue-400 uppercase leading-none">Restants</span>
+                    <span id="absRemains" class="text-[11px] font-black text-blue-900">0</span>
+                </div>
+            </div>
+        </div>
+        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v7.8</span></div>
+        <div class="flex items-center gap-3">
+            <select id="section" class="bg-slate-800 text-white rounded px-3 py-1.5 text-[10px] font-bold outline-none border border-slate-700" onchange="switchSection()">
+                <option value="NONE">AUCUNE GRILLE</option>
+            </select>
+            <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-sm transition-all active:scale-95">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i> Export
+            </button>
+        </div>
+    </header>
+
+    <main class="flex flex-1 overflow-hidden">
+        <aside class="w-[380px] bg-white border-r border-slate-200 flex flex-col shadow-lg z-20">
+            <div class="p-3 border-b border-slate-100 flex flex-col gap-2 bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 help-trigger z-30">
+                            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-slate-400 cursor-help hover:text-blue-500"></i>
+                            <div class="help-tooltip absolute left-0 top-6 w-48 p-2 bg-slate-900/95 text-white text-[10px] rounded-lg shadow-xl backdrop-blur-sm pointer-events-none">
+                                <p class="font-bold mb-1 text-blue-400">Astuces Joker (*) :</p>
+                                <ul class="space-y-1 opacity-90">
+                                    <li><code class="text-emerald-400 font-bold">707*</code> : Commence par</li>
+                                    <li><code class="text-emerald-400 font-bold">*8</code> : Finit par</li>
+                                    <li><code class="text-emerald-400 font-bold">*.01.*</code> : Contient segment</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <input type="text" id="accFilter" placeholder="Filtrer compte..." class="w-full pl-9 pr-2 py-1.5 bg-white border border-slate-200 rounded text-xs outline-none focus:border-blue-400 shadow-sm" oninput="renderAccounts()">
+                    </div>
+                    <div class="flex items-center bg-white border border-slate-200 rounded p-0.5 shadow-sm">
+                        <button onclick="toggleLenOp()" id="lenOp" class="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-slate-600 hover:bg-slate-100 rounded transition-colors">=</button>
+                        <input type="number" id="lenValue" class="w-8 bg-transparent text-[10px] font-bold text-center outline-none" oninput="renderAccounts()">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <i data-lucide="type" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
+                        <input type="text" id="labelFilter" placeholder="Filtrer libellé (ex: CORSA)" class="w-full pl-9 pr-2 py-1.5 bg-white border border-slate-200 rounded text-xs outline-none focus:border-blue-400 shadow-sm transition-colors" oninput="renderAccounts()">
+                    </div>
+                    <span id="filterCount" class="text-[10px] font-bold text-blue-600 min-w-[25px] text-right">0</span>
+                </div>
+            </div>
+            <div id="accList" class="flex-1 overflow-y-auto custom-scrollbar select-none divide-y divide-slate-50 bg-white"></div>
+        </aside>
+
+        <section id="grid-area" class="flex-1 flex flex-col p-6 bg-slate-50 overflow-hidden">
+            <div class="flex flex-col h-full rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div class="bg-slate-800 shrink-0">
+                    <table class="grid-fixed">
+                        <thead>
+                            <tr id="headerRow">
+                                <th class="col-code p-2 text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Code</th>
+                                <th class="col-label p-2 text-left pl-4 text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Rubrique</th>
+                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Unités</th>
+                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">CA Brut</th>
+                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Remises</th>
+                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">CA Net</th>
+                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Cout Achat</th>
+                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Aides</th>
+                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Marge</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <table class="grid-fixed border-collapse" id="mainGrid"></table>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div id="inspector" class="fixed hidden z-[1000] w-[650px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-200 scale-95 opacity-0">
+    <div id="ins-header" class="bg-slate-900 p-2.5 flex justify-between items-center text-white font-bold text-[10px] uppercase select-none">
+        <div class="flex items-center gap-2 pointer-events-none">
+            <i data-lucide="grip-horizontal" class="w-3.5 h-3.5 text-slate-500"></i>
+            <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400"></i>
+            <span id="ins-title"></span>
+        </div>
+        <button onclick="closeInspector()" class="hover:bg-white/10 rounded p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div id="ins-body" class="max-h-[450px] overflow-y-auto custom-scrollbar p-2 bg-white/50 space-y-1"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); initDraggableInspector(); });
+
+    const colHeaders = ["Code", "Rubrique", "Unités", "CA Brut", "Remises", "CA Net", "Cout Achat", "Aides", "Marge"];
+    let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=', selectedIds = [], lastClickedIndex = null;
+
+    function initDraggableInspector() {
+        const ins = document.getElementById('inspector'), header = document.getElementById('ins-header');
+        let isDragging = false, offsetH = 0, offsetV = 0;
+        header.addEventListener('mousedown', (e) => { isDragging = true; offsetH = e.clientX - ins.offsetLeft; offsetV = e.clientY - ins.offsetTop; ins.classList.remove('transition-all'); });
+        document.addEventListener('mousemove', (e) => { if (isDragging) { ins.style.left = (e.clientX - offsetH) + 'px'; ins.style.top = (e.clientY - offsetV) + 'px'; } });
+        document.addEventListener('mouseup', () => { isDragging = false; ins.classList.add('transition-all'); });
+    }
+
+    function triggerSuperFlash(cid) {
+        const cell = document.getElementById(`cell-${cid}`);
+        if (!cell) return;
+        const rect = cell.getBoundingClientRect();
+        const overlay = document.createElement('div');
+        overlay.className = 'flash-overlay';
+        overlay.style.top = `${rect.top + window.scrollY}px`; overlay.style.left = `${rect.left + window.scrollX}px`;
+        overlay.style.width = `${rect.width}px`; overlay.style.height = `${rect.height}px`;
+        document.body.appendChild(overlay); overlay.addEventListener('animationend', () => overlay.remove());
+    }
+
+    function formatAccountId(id, mask) {
+        if (!mask) return id;
+        const segments = mask.split(/[,\.\s]/).map(Number).filter(n => n > 0);
+        let result = [], pos = 0;
+        for (let len of segments) { if (pos >= id.length) break; result.push(id.substring(pos, pos + len)); pos += len; }
+        if (pos < id.length) result.push(id.substring(pos));
+        return result.join('.');
+    }
+
+    document.getElementById('gridInput').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            sectionsData = {}; let options = "";
+            workbook.SheetNames.forEach((name, idx) => {
+                const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 500);
+                if (sheetData.length > 0) {
+                    sectionsData[name] = sheetData;
+                    options += `<option value="${name}">${name}</option>`;
+                    if (idx === 0) currentSection = name;
+                }
+            });
+            document.getElementById('section').innerHTML = options; document.getElementById('section').value = currentSection;
+            renderDynamicGrid();
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function switchSection() { currentSection = document.getElementById('section').value; renderDynamicGrid(); }
+
+    document.getElementById('balanceInput').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ id: String(r[0]), label: String(r[1] || '') }));
+            document.getElementById('totalAcc').innerText = accounts.length; renderAccounts();
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function renderDynamicGrid() {
+        const grid = document.getElementById('mainGrid'), data = sectionsData[currentSection];
+        if (!data || !data.length) return;
+        let html = `<tbody>`;
+        data.forEach((row) => {
+            const code = row[0] ? String(row[0]).trim() : "", label = row[1] || "", hasCode = code !== "";
+            html += `<tr class="${hasCode ? 'hover:bg-slate-50' : 'bg-slate-100/30'}">
+                <td class="col-code p-2 text-center text-[10px] font-bold ${hasCode ? 'text-blue-600' : 'text-slate-400'} border-b border-slate-100">${code}</td>
+                <td class="col-label p-2 text-xs font-bold text-slate-700 border-b border-slate-100 pl-4 truncate">${label}</td>`;
+            for(let cIdx = 2; cIdx < 9; cIdx++) {
+                const val = row[cIdx];
+                if (!hasCode) html += `<td class="col-data p-2 border-b border-slate-100 text-[10px] text-slate-500 italic text-center">${val || ""}</td>`;
+                else if (typeof val === 'number') {
+                    const cid = Math.abs(val);
+                    cellInfoMap[cid] = { rowId: code, rowLabel: label, colHeader: colHeaders[cIdx], section: currentSection };
+                    if (val < 0) html += `<td class="col-data p-1 border-b border-slate-100 text-center opacity-20 text-[10px]">🔒</td>`;
+                    else {
+                        const count = (mappings[cid] || []).length;
+                        html += `<td class="col-data p-1 border-b border-slate-100 text-center relative">
+                            <div id="cell-${cid}" onclick="executeMapping(${cid})" oncontextmenu="openCellInspector(event, ${cid})" 
+                                 class="h-8 flex items-center justify-center rounded border border-slate-200 text-[14px] font-black text-blue-700 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all shadow-sm">
+                                ${cid}${count ? `<span class="absolute top-0 right-0 bg-slate-900 text-white text-[9px] px-1.5 rounded-bl font-bold">${count}</span>` : ''}
+                            </div></td>`;
+                    }
+                } else html += `<td class="col-data p-1 border-b border-slate-100"></td>`;
+            }
+            html += `</tr>`;
+        });
+        grid.innerHTML = html + `</tbody>`; lucide.createIcons();
+    }
+
+    function renderAccounts() {
+        const list = document.getElementById('accList'), usageMap = {};
+        const accFilter = document.getElementById('accFilter').value.toLowerCase();
+        const labelFilter = document.getElementById('labelFilter').value.toLowerCase();
+        const mask = document.getElementById('maskInput').value;
+        const unmappedOnly = document.getElementById('unmappedOnly').checked, lenVal = document.getElementById('lenValue').value;
+        
+        Object.values(mappings).flat().forEach(id => usageMap[id] = (usageMap[id] || 0) + 1);
+        document.getElementById('absRemains').innerText = accounts.filter(a => !usageMap[a.id]).length;
+
+        // ÉTAPE CRUCIALE v7.8 : On filtre les comptes AVANT le rendu pour le shift+clic
+        displayedAccounts = accounts.filter(acc => {
+            const usageCount = usageMap[acc.id] || 0;
+            if (unmappedOnly && usageCount > 0) return false;
+            
+            const fId = formatAccountId(acc.id, mask);
+            let matchAcc = true;
+            if (accFilter !== "") {
+                try {
+                    const escapedFilter = accFilter.replace(/\./g, "\\.").replace(/\*/g, '.*');
+                    matchAcc = new RegExp("^" + escapedFilter + "$").test(fId.toLowerCase());
+                } catch(e) { matchAcc = fId.toLowerCase().includes(accFilter); }
+            }
+            if (!matchAcc) return false;
+
+            if (labelFilter && !acc.label.toLowerCase().includes(labelFilter)) return false;
+
+            if (lenVal !== "") {
+                const l = acc.id.length, t = parseInt(lenVal);
+                if (currentLenOp === '=' && l !== t) return false;
+                if (currentLenOp === '>' && l <= t) return false;
+                if (currentLenOp === '<' && l >= t) return false;
+            }
+            return true;
+        });
+
+        document.getElementById('filterCount').innerText = displayedAccounts.length;
+        list.innerHTML = displayedAccounts.map((acc, index) => {
+            const usageCount = usageMap[acc.id] || 0, isMapped = usageCount > 0, fId = formatAccountId(acc.id, mask);
+            const isSelected = selectedIds.includes(acc.id);
+            const selectionClasses = isSelected ? 'bg-blue-600 text-white border-l-4 border-l-blue-900 shadow-inner acc-item-selected' : 'border-l-4 border-l-transparent text-slate-700 hover:bg-slate-50';
+            
+            return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer transition-colors ${selectionClasses}" onclick="handleAccountClick(event, ${index})">
+                <span class="font-mono text-sm font-bold w-36 shrink-0 ${isSelected ? 'text-white' : 'text-slate-700'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${fId}</span>
+                <div class="acc-label-container">
+                    <span class="acc-label-text text-[10px] uppercase font-medium ${isSelected ? 'text-blue-100' : 'text-slate-500'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${acc.label}</span>
+                </div>
+                ${usageCount > 1 ? `<span class="z-[20] absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 rounded-full shadow-sm border border-white/20">${usageCount}</span>` : ''}
+                <div class="absolute right-0 top-0 bottom-0 w-1 ${isMapped ? 'bg-emerald-500' : 'bg-transparent'}"></div>
+            </div>`;
+        }).join('');
+    }
+
+    function handleAccountClick(e, index) {
+        const clickedId = displayedAccounts[index].id;
+
+        if (e.shiftKey && lastClickedIndex !== null) {
+            const start = Math.min(lastClickedIndex, index), end = Math.max(lastClickedIndex, index);
+            // On sélectionne uniquement dans la plage VISIBLE
+            const rangeIds = displayedAccounts.slice(start, end + 1).map(a => a.id);
+            selectedIds = Array.from(new Set([...selectedIds, ...rangeIds]));
+        } else if (e.ctrlKey || e.metaKey) {
+            selectedIds.includes(clickedId) ? selectedIds = selectedIds.filter(id => id !== clickedId) : selectedIds.push(clickedId);
+        } else {
+            selectedIds = (selectedIds.length === 1 && selectedIds[0] === clickedId) ? [] : [clickedId];
+        }
+        
+        lastClickedIndex = index; 
+        renderAccounts();
+    }
+
+    function executeMapping(cid) {
+        if (!selectedIds.length) return;
+        if (!mappings[cid]) mappings[cid] = [];
+        selectedIds.forEach(id => { if (!mappings[cid].includes(id)) mappings[cid].push(id); });
+        triggerSuperFlash(cid); selectedIds = []; renderAccounts(); renderDynamicGrid();
+    }
+
+    function openCellInspector(event, cid) {
+        event.preventDefault(); const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
+        ins.dataset.mode = "CELL"; ins.dataset.id = cid;
+        document.getElementById('ins-title').innerText = `SECTION: ${info.section} | CELLULE ${cid} : ${info.rowLabel}`;
+        refreshInspector(); showInspector(event.pageX, event.pageY);
+    }
+
+    function openAccountInspector(event, aid) {
+        event.preventDefault(); const ins = document.getElementById('inspector'), acc = accounts.find(a => a.id === aid);
+        ins.dataset.mode = "ACC"; ins.dataset.id = aid;
+        document.getElementById('ins-title').innerText = `COMPTE : ${aid} - ${acc ? acc.label : ''}`;
+        refreshInspector(); showInspector(event.pageX, event.pageY);
+    }
+
+    function refreshInspector() {
+        const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
+        if (ins.dataset.mode === "CELL") {
+            const list = mappings[id] || [];
+            body.innerHTML = list.map(aid => {
+                const acc = accounts.find(a => a.id === aid);
+                return `<div class="flex items-center gap-3 p-2 bg-white border rounded shadow-sm"><span class="font-mono font-bold text-blue-700 w-32 shrink-0 text-sm">${formatAccountId(aid, mask)}</span><span class="text-slate-600 truncate flex-1 uppercase font-bold text-[10px]">${acc ? acc.label : 'Inconnu'}</span><button class="text-red-400 hover:text-red-600 p-1.5 rounded" onclick="removeMapping('${id}','${aid}')"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
+            }).join(list.length ? '' : '<div class="text-center p-8 text-xs text-slate-400">Aucun compte.</div>');
+        } else {
+            let found = []; for (const [cid, ids] of Object.entries(mappings)) { if (ids.includes(id)) found.push({cid, info: cellInfoMap[cid]}); }
+            body.innerHTML = found.map(f => `<div class="flex items-center gap-3 p-2 bg-white border rounded shadow-sm"><span class="text-[9px] font-bold text-slate-400 uppercase shrink-0">${f.info.section}</span><span class="text-emerald-600 font-black text-sm w-12 text-center border-x px-2">${f.cid}</span><div class="flex flex-1 items-center gap-2 px-2 overflow-hidden text-[10px] font-bold uppercase"><span class="text-slate-400 font-mono">${f.info.rowId}</span><span class="text-slate-600 truncate">${f.info.rowLabel}</span><span class="text-blue-600 shrink-0">${f.info.colHeader}</span></div><button class="text-red-400 hover:text-red-600 p-1.5 rounded" onclick="removeMapping('${f.cid}','${id}')"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`).join(found.length ? '' : '<div class="text-center p-8 text-xs text-slate-400">Non utilisé.</div>');
+        }
+        lucide.createIcons();
+    }
+
+    function removeMapping(cid, aid) { mappings[cid] = mappings[cid].filter(id => id !== aid); refreshInspector(); renderAccounts(); renderDynamicGrid(); }
+    function showInspector(x, y) { const ins = document.getElementById('inspector'); ins.classList.remove('hidden'); ins.style.left = Math.min(x, window.innerWidth - 660) + 'px'; ins.style.top = Math.min(y, window.innerHeight - 460) + 'px'; setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); }
+    function closeInspector() { const ins = document.getElementById('inspector'); ins.classList.remove('scale-100', 'opacity-100'); setTimeout(() => ins.classList.add('hidden'), 200); }
+    function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
+
+    function exportMappingCSV() {
+        let rows = [];
+        for (const [cid, ids] of Object.entries(mappings)) {
+            const info = cellInfoMap[cid]; let sens = (info && info.colHeader.match(/CA Brut|CA Net|Aides/i)) ? -100 : 100;
+            ids.forEach(aid => { const acc = accounts.find(a => a.id === aid); rows.push(`${aid};${acc ? acc.label : ""};${cid};${sens}`); });
+        }
+        const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v7.8.csv`; link.click();
+    }
+</script>
+</body>
+</html>

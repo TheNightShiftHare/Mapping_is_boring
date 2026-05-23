@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Stellantis Mapping Engine - v8.4</title>
+    <title>Mapping Engine</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -113,7 +113,15 @@
                 </div>
             </div>
         </div>
-        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.4</span></div>
+        
+        <div class="flex items-center gap-2 border-x border-slate-100 px-4 h-full select-none">
+            <div class="flex flex-col items-end">
+                <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
+                <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
+            </div>
+            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.4</span>
+        </div>
+
         <div class="flex items-center gap-3">
             <select id="section" class="bg-slate-800 text-white rounded px-3 py-1.5 text-[10px] font-bold outline-none border border-slate-700" onchange="switchSection()">
                 <option value="NONE">CHARGEMENT GRILLE...</option>
@@ -402,7 +410,7 @@
         reader.readAsArrayBuffer(file);
     });
 
-    // EVOLUTION v8.4 : Intégration du trait de couleur Rose/Fuchsia exclusif pour les comptes multi-mappés à 100%
+    // RENDER SECURISE AVEC INDIFICATEUR MULTI-MAPPE VIOLET EXTRA-TRANCHANT (SANS BADGE ENCOMBRANT)
     function renderAccounts() {
         const list = document.getElementById('accList'), usageMap = {}, occurrenceMap = {};
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
@@ -454,15 +462,15 @@
             
             if (currentTotal > 0) {
                 if (currentTotal === 100) {
-                    // Si le compte est soldé à 100% mais dispatché sur plusieurs cellules -> ROSE (Multi-mappé)
-                    if (occurrences > 1) statusColor = "bg-rose-500";
+                    // Si le compte est à 100% mais ventilé sur plusieurs cellules -> TRAIT VIOLET NET (Pas de confusion avec le rouge)
+                    if (occurrences > 1) statusColor = "bg-purple-600";
                     else statusColor = "bg-emerald-500"; // Unique cible -> VERT
                 }
                 else if (currentTotal < 100) {
                     statusColor = "bg-amber-500";
                     stateBadge = `<span class="z-[20] absolute right-3 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border border-white/20">Reste: ${100 - currentTotal}</span>`;
                 } else {
-                    statusColor = "bg-red-500";
+                    statusColor = "bg-red-500"; // Erreur / Dépassement -> ROUGE
                     stateBadge = `<span class="z-[20] absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border border-white/20">Trop: +${currentTotal - 100}</span>`;
                 }
             }

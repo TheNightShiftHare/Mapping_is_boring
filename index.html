@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Stellantis Mapping Engine - v8.1</title>
+    <title>Stellantis Mapping Engine - v8.2</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -113,7 +113,7 @@
                 </div>
             </div>
         </div>
-        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.1</span></div>
+        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.2</span></div>
         <div class="flex items-center gap-3">
             <select id="section" class="bg-slate-800 text-white rounded px-3 py-1.5 text-[10px] font-bold outline-none border border-slate-700" onchange="switchSection()">
                 <option value="NONE">CHARGEMENT GRILLE...</option>
@@ -160,7 +160,7 @@
 
         <section id="grid-area" class="flex-1 flex flex-col p-6 bg-slate-50 overflow-hidden">
             <div class="flex flex-col h-full rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div class="bg-slate-800 shrink-0">
+                <div class="bg-slate-100 border-b border-slate-200 shrink-0">
                     <table class="grid-fixed">
                         <thead>
                             <tr id="headerRow">
@@ -196,8 +196,6 @@
     });
 
     let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=', selectedIds = [], lastClickedIndex = null;
-    
-    // Structure globale v8.1 pour stocker le sens configuré de chaque colonne par feuille
     let columnConfigs = {}; 
 
     function loadAutoGrid() {
@@ -246,6 +244,7 @@
         return result.join('.');
     }
 
+    // Processus unifié de lecture Excel
     function processGridWorkbook(buffer) {
         const data = new Uint8Array(buffer);
         const workbook = XLSX.read(data, {type: 'array'});
@@ -254,11 +253,10 @@
         let options = "";
 
         workbook.SheetNames.forEach((name, idx) => {
-            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 502); // 500 + 2 lignes de conf
+            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 502); 
             if (sheetData.length > 1) {
                 sectionsData[name] = sheetData;
                 
-                // Extraction de la configuration dynamique (Ligne 1 et Ligne 2)
                 const headers = sheetData[0] || [];
                 const directions = sheetData[1] || [];
                 
@@ -290,7 +288,7 @@
         renderDynamicGrid(); 
     }
 
-    // FONCTION NEW v8.1 : Rendu à 100% dynamique du bandeau noir
+    // FONCTION MODIFIÉE v8.2 : Refonte esthétique et agrandissement du bandeau de colonnes
     function renderDynamicGridHeader() {
         const headerRow = document.getElementById('headerRow');
         const config = columnConfigs[currentSection];
@@ -302,11 +300,21 @@
             if (cIdx === 1) widthClass = "col-label";
             
             const alignClass = (cIdx === 0 || cIdx > 1) ? "text-center" : "text-left pl-4";
-            const showDirection = (cIdx > 1 && col.direction !== 0) ? `<div class="text-[8px] opacity-50 font-mono tracking-normal">${col.direction > 0 ? '+' : ''}${col.direction}</div>` : '<div class="text-[8px] opacity-0 font-mono">&nbsp;</div>';
+            
+            // Gestion du style et de la couleur sémantique du coefficient agrandi
+            let directionHTML = '<div class="text-[9px] font-bold opacity-0 leading-none mt-1">&nbsp;</div>';
+            if (cIdx > 1 && col.direction !== 0) {
+                let colorClass = "text-slate-400"; // Cas 0 ou indéfini
+                if (col.direction > 0) colorClass = "text-blue-600";    // Positif (+100)
+                if (col.direction < 0) colorClass = "text-amber-600";   // Négatif (-100)
+                
+                directionHTML = `<div class="${colorClass} text-[10px] font-black tracking-wide leading-none mt-1">${col.direction > 0 ? '+' : ''}${col.direction}</div>`;
+            }
 
-            return `<th class="${widthClass} p-2 ${alignClass} text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300 leading-none">
-                <div>${col.title}</div>
-                ${showDirection}
+            // Rendu final avec texte plus grand (text-slate-700 / font-bold) et espacements ajustés
+            return `<th class="${widthClass} px-2 py-3 ${alignClass} text-[11px] font-extrabold uppercase text-slate-700 tracking-tight border-b border-slate-200">
+                <div class="truncate select-none">${col.title}</div>
+                ${directionHTML}
             </th>`;
         }).join('');
     }
@@ -317,8 +325,6 @@
         if (!sheetData || !sheetData.length || !config) return;
         
         let html = `<tbody>`;
-        
-        // SÉCURITÉ REVISÉE v8.1 : On ignore les deux premières lignes (Index 0 et 1 de l'Excel)
         const dataRows = sheetData.slice(2);
 
         dataRows.forEach((row) => {
@@ -327,7 +333,6 @@
                 <td class="col-code p-2 text-center text-[10px] font-bold ${hasCode ? 'text-blue-600' : 'text-slate-400'} border-b border-slate-100">${code}</td>
                 <td class="col-label p-2 text-xs font-bold text-slate-700 border-b border-slate-100 pl-4 truncate">${label}</td>`;
             
-            // On parcourt les colonnes de données dynamiques basées sur la structure de la configuration
             for(let cIdx = 2; cIdx < config.length; cIdx++) {
                 const val = row[cIdx];
                 const colTitle = config[cIdx].title;
@@ -335,8 +340,6 @@
                 if (!hasCode) html += `<td class="col-data p-2 border-b border-slate-100 text-[10px] text-slate-500 italic text-center">${val || ""}</td>`;
                 else if (typeof val === 'number') {
                     const cid = Math.abs(val);
-                    
-                    // Stockage de la référence de la colonne avec son header dynamique
                     cellInfoMap[cid] = { rowId: code, rowLabel: label, colHeader: colTitle, colIndex: cIdx, section: currentSection };
                     
                     if (val < 0) html += `<td class="col-data p-1 border-b border-slate-100 text-center opacity-20 text-[10px]">🔒</td>`;
@@ -478,17 +481,15 @@
     function closeInspector() { const ins = document.getElementById('inspector'); ins.classList.remove('scale-100', 'opacity-100'); setTimeout(() => ins.classList.add('hidden'), 200); }
     function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
 
-    // EXPORT REVISE v8.1 : Va chercher dynamiquement le coefficient (-100, 100, etc.) sur la ligne 2 de la colonne concernée
     function exportMappingCSV() {
         let rows = [];
         for (const [cid, ids] of Object.entries(mappings)) {
             const info = cellInfoMap[cid]; 
-            let sens = 100; // Sécurité par défaut
+            let sens = 100; 
             
             if (info) {
                 const configSection = columnConfigs[info.section];
                 if (configSection && configSection[info.colIndex]) {
-                    // Extraction directe du sens depuis la ligne 2 mémorisée de la colonne
                     sens = configSection[info.colIndex].direction;
                 }
             }
@@ -499,7 +500,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.1.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.2.csv`; link.click();
     }
 </script>
 </body>

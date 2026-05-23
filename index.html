@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Stellantis Mapping Engine - v8.0</title>
+    <title>Stellantis Mapping Engine - v8.1</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -113,7 +113,7 @@
                 </div>
             </div>
         </div>
-        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.0</span></div>
+        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.1</span></div>
         <div class="flex items-center gap-3">
             <select id="section" class="bg-slate-800 text-white rounded px-3 py-1.5 text-[10px] font-bold outline-none border border-slate-700" onchange="switchSection()">
                 <option value="NONE">CHARGEMENT GRILLE...</option>
@@ -164,16 +164,7 @@
                     <table class="grid-fixed">
                         <thead>
                             <tr id="headerRow">
-                                <th class="col-code p-2 text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Code</th>
-                                <th class="col-label p-2 text-left pl-4 text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Rubrique</th>
-                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Unités</th>
-                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">CA Brut</th>
-                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Remises</th>
-                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">CA Net</th>
-                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Cout Achat</th>
-                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Aides</th>
-                                <th class="col-data p-2 text-center text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300">Marge</th>
-                            </tr>
+                                </tr>
                         </thead>
                     </table>
                 </div>
@@ -198,17 +189,17 @@
 </div>
 
 <script>
-    // ÉTAPE REVISEE v8.0 : Au démarrage, on charge les icônes, le drag et la grille automatisée
     document.addEventListener('DOMContentLoaded', () => { 
         lucide.createIcons(); 
         initDraggableInspector(); 
         loadAutoGrid(); 
     });
 
-    const colHeaders = ["Code", "Rubrique", "Unités", "CA Brut", "Remises", "CA Net", "Cout Achat", "Aides", "Marge"];
     let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=', selectedIds = [], lastClickedIndex = null;
+    
+    // Structure globale v8.1 pour stocker le sens configuré de chaque colonne par feuille
+    let columnConfigs = {}; 
 
-    // FONCTION NEW v8.0 : Récupère le fichier local de manière transparente
     function loadAutoGrid() {
         const targetGrid = './GRID_TO_LOAD.xlsx';
         fetch(targetGrid)
@@ -255,25 +246,37 @@
         return result.join('.');
     }
 
-    // Processus unifié pour transformer le binaire Excel en structure utilisable
     function processGridWorkbook(buffer) {
         const data = new Uint8Array(buffer);
         const workbook = XLSX.read(data, {type: 'array'});
-        sectionsData = {}; let options = "";
+        sectionsData = {}; 
+        columnConfigs = {};
+        let options = "";
+
         workbook.SheetNames.forEach((name, idx) => {
-            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 500);
-            if (sheetData.length > 0) {
+            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 502); // 500 + 2 lignes de conf
+            if (sheetData.length > 1) {
                 sectionsData[name] = sheetData;
+                
+                // Extraction de la configuration dynamique (Ligne 1 et Ligne 2)
+                const headers = sheetData[0] || [];
+                const directions = sheetData[1] || [];
+                
+                columnConfigs[name] = headers.map((title, cIdx) => ({
+                    title: title ? String(title).trim() : `Col ${cIdx + 1}`,
+                    direction: directions[cIdx] !== undefined ? parseInt(directions[cIdx]) : 0
+                }));
+
                 options += `<option value="${name}">${name}</option>`;
                 if (idx === 0) currentSection = name;
             }
         });
         document.getElementById('section').innerHTML = options; 
         document.getElementById('section').value = currentSection;
+        renderDynamicGridHeader();
         renderDynamicGrid();
     }
 
-    // Écouteur manuel conservé en bypass de secours
     document.getElementById('gridInput').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -281,36 +284,61 @@
         reader.readAsArrayBuffer(file);
     });
 
-    function switchSection() { currentSection = document.getElementById('section').value; renderDynamicGrid(); }
+    function switchSection() { 
+        currentSection = document.getElementById('section').value; 
+        renderDynamicGridHeader();
+        renderDynamicGrid(); 
+    }
 
-    document.getElementById('balanceInput').addEventListener('change', function(e) {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ id: String(r[0]), label: String(r[1] || '') }));
-            document.getElementById('totalAcc').innerText = accounts.length; renderAccounts();
-        };
-        reader.readAsArrayBuffer(file);
-    });
+    // FONCTION NEW v8.1 : Rendu à 100% dynamique du bandeau noir
+    function renderDynamicGridHeader() {
+        const headerRow = document.getElementById('headerRow');
+        const config = columnConfigs[currentSection];
+        if (!config) return;
+
+        headerRow.innerHTML = config.map((col, cIdx) => {
+            let widthClass = "col-data";
+            if (cIdx === 0) widthClass = "col-code";
+            if (cIdx === 1) widthClass = "col-label";
+            
+            const alignClass = (cIdx === 0 || cIdx > 1) ? "text-center" : "text-left pl-4";
+            const showDirection = (cIdx > 1 && col.direction !== 0) ? `<div class="text-[8px] opacity-50 font-mono tracking-normal">${col.direction > 0 ? '+' : ''}${col.direction}</div>` : '<div class="text-[8px] opacity-0 font-mono">&nbsp;</div>';
+
+            return `<th class="${widthClass} p-2 ${alignClass} text-[10px] font-bold uppercase text-slate-200 border-b border-slate-300 leading-none">
+                <div>${col.title}</div>
+                ${showDirection}
+            </th>`;
+        }).join('');
+    }
 
     function renderDynamicGrid() {
-        const grid = document.getElementById('mainGrid'), data = sectionsData[currentSection];
-        if (!data || !data.length) return;
+        const grid = document.getElementById('mainGrid'), sheetData = sectionsData[currentSection];
+        const config = columnConfigs[currentSection];
+        if (!sheetData || !sheetData.length || !config) return;
+        
         let html = `<tbody>`;
-        data.forEach((row) => {
+        
+        // SÉCURITÉ REVISÉE v8.1 : On ignore les deux premières lignes (Index 0 et 1 de l'Excel)
+        const dataRows = sheetData.slice(2);
+
+        dataRows.forEach((row) => {
             const code = row[0] ? String(row[0]).trim() : "", label = row[1] || "", hasCode = code !== "";
             html += `<tr class="${hasCode ? 'hover:bg-slate-50' : 'bg-slate-100/30'}">
                 <td class="col-code p-2 text-center text-[10px] font-bold ${hasCode ? 'text-blue-600' : 'text-slate-400'} border-b border-slate-100">${code}</td>
                 <td class="col-label p-2 text-xs font-bold text-slate-700 border-b border-slate-100 pl-4 truncate">${label}</td>`;
-            for(let cIdx = 2; cIdx < 9; cIdx++) {
+            
+            // On parcourt les colonnes de données dynamiques basées sur la structure de la configuration
+            for(let cIdx = 2; cIdx < config.length; cIdx++) {
                 const val = row[cIdx];
+                const colTitle = config[cIdx].title;
+
                 if (!hasCode) html += `<td class="col-data p-2 border-b border-slate-100 text-[10px] text-slate-500 italic text-center">${val || ""}</td>`;
                 else if (typeof val === 'number') {
                     const cid = Math.abs(val);
-                    cellInfoMap[cid] = { rowId: code, rowLabel: label, colHeader: colHeaders[cIdx], section: currentSection };
+                    
+                    // Stockage de la référence de la colonne avec son header dynamique
+                    cellInfoMap[cid] = { rowId: code, rowLabel: label, colHeader: colTitle, colIndex: cIdx, section: currentSection };
+                    
                     if (val < 0) html += `<td class="col-data p-1 border-b border-slate-100 text-center opacity-20 text-[10px]">🔒</td>`;
                     else {
                         const count = (mappings[cid] || []).length;
@@ -326,6 +354,19 @@
         });
         grid.innerHTML = html + `</tbody>`; lucide.createIcons();
     }
+
+    document.getElementById('balanceInput').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ id: String(r[0]), label: String(r[1] || '') }));
+            document.getElementById('totalAcc').innerText = accounts.length; renderAccounts();
+        };
+        reader.readAsArrayBuffer(file);
+    });
 
     function renderAccounts() {
         const list = document.getElementById('accList'), usageMap = {};
@@ -437,14 +478,28 @@
     function closeInspector() { const ins = document.getElementById('inspector'); ins.classList.remove('scale-100', 'opacity-100'); setTimeout(() => ins.classList.add('hidden'), 200); }
     function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
 
+    // EXPORT REVISE v8.1 : Va chercher dynamiquement le coefficient (-100, 100, etc.) sur la ligne 2 de la colonne concernée
     function exportMappingCSV() {
         let rows = [];
         for (const [cid, ids] of Object.entries(mappings)) {
-            const info = cellInfoMap[cid]; let sens = (info && info.colHeader.match(/CA Brut|CA Net|Aides/i)) ? -100 : 100;
-            ids.forEach(aid => { const acc = accounts.find(a => a.id === aid); rows.push(`${aid};${acc ? acc.label : ""};${cid};${sens}`); });
+            const info = cellInfoMap[cid]; 
+            let sens = 100; // Sécurité par défaut
+            
+            if (info) {
+                const configSection = columnConfigs[info.section];
+                if (configSection && configSection[info.colIndex]) {
+                    // Extraction directe du sens depuis la ligne 2 mémorisée de la colonne
+                    sens = configSection[info.colIndex].direction;
+                }
+            }
+            
+            ids.forEach(aid => { 
+                const acc = accounts.find(a => a.id === aid); 
+                rows.push(`${aid};${acc ? acc.label : ""};${cid};${sens}`); 
+            });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.0.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.1.csv`; link.click();
     }
 </script>
 </body>

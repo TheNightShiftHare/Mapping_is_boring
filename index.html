@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Stellantis Mapping Engine - v8.3</title>
+    <title>Stellantis Mapping Engine - v8.4</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -113,7 +113,7 @@
                 </div>
             </div>
         </div>
-        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.3</span></div>
+        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.4</span></div>
         <div class="flex items-center gap-3">
             <select id="section" class="bg-slate-800 text-white rounded px-3 py-1.5 text-[10px] font-bold outline-none border border-slate-700" onchange="switchSection()">
                 <option value="NONE">CHARGEMENT GRILLE...</option>
@@ -402,8 +402,9 @@
         reader.readAsArrayBuffer(file);
     });
 
+    // EVOLUTION v8.4 : Intégration du trait de couleur Rose/Fuchsia exclusif pour les comptes multi-mappés à 100%
     function renderAccounts() {
-        const list = document.getElementById('accList'), usageMap = {};
+        const list = document.getElementById('accList'), usageMap = {}, occurrenceMap = {};
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
         const labelFilter = document.getElementById('labelFilter').value.toLowerCase();
         const mask = document.getElementById('maskInput').value;
@@ -411,6 +412,7 @@
         
         Object.values(mappings).flat().forEach(m => {
             usageMap[m.accountId] = (usageMap[m.accountId] || 0) + Math.abs(m.value);
+            occurrenceMap[m.accountId] = (occurrenceMap[m.accountId] || 0) + 1;
         });
 
         document.getElementById('absRemains').innerText = accounts.filter(a => !usageMap[a.id]).length;
@@ -443,13 +445,19 @@
         document.getElementById('filterCount').innerText = displayedAccounts.length;
         list.innerHTML = displayedAccounts.map((acc, index) => {
             const currentTotal = usageMap[acc.id] || 0;
+            const occurrences = occurrenceMap[acc.id] || 0;
             const isSelected = selectedIds.includes(acc.id);
             const selectionClasses = isSelected ? 'bg-blue-600 text-white border-l-4 border-l-blue-900 shadow-inner acc-item-selected' : 'border-l-4 border-l-transparent text-slate-700 hover:bg-slate-50';
             
             let statusColor = "bg-transparent";
             let stateBadge = "";
+            
             if (currentTotal > 0) {
-                if (currentTotal === 100) statusColor = "bg-emerald-500";
+                if (currentTotal === 100) {
+                    // Si le compte est soldé à 100% mais dispatché sur plusieurs cellules -> ROSE (Multi-mappé)
+                    if (occurrences > 1) statusColor = "bg-rose-500";
+                    else statusColor = "bg-emerald-500"; // Unique cible -> VERT
+                }
                 else if (currentTotal < 100) {
                     statusColor = "bg-amber-500";
                     stateBadge = `<span class="z-[20] absolute right-3 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border border-white/20">Reste: ${100 - currentTotal}</span>`;
@@ -459,7 +467,6 @@
                 }
             }
 
-            // CORRECTION v8.3 : Intégration en direct de formatAccountId pour sécuriser la portée
             return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer transition-colors ${selectionClasses}" onclick="handleAccountClick(event, ${index})">
                 <span class="font-mono text-sm font-bold w-36 shrink-0 ${isSelected ? 'text-white' : 'text-slate-700'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${formatAccountId(acc.id, mask)}</span>
                 <div class="acc-label-container">
@@ -659,7 +666,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.3.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.4.csv`; link.click();
     }
 </script>
 </body>

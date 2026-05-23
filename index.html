@@ -228,10 +228,9 @@
         initPopupKeyboardShortcuts();
     });
 
-    // EVOLUTION v8.3 : Les mappings contiennent maintenant des structures d'objets : { accountId: string, value: number }
     let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=', selectedIds = [], lastClickedIndex = null;
     let columnConfigs = {}; 
-    let activePopupContext = null; // Mémoire de travail pour l'Alt+Clic actif
+    let activePopupContext = null;
 
     function loadAutoGrid() {
         const targetGrid = './GRID_TO_LOAD.xlsx';
@@ -403,7 +402,6 @@
         reader.readAsArrayBuffer(file);
     });
 
-    // EVOLUTION v8.3 : Recalcul par somme absolue des sous-mappings d'un compte
     function renderAccounts() {
         const list = document.getElementById('accList'), usageMap = {};
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
@@ -411,7 +409,6 @@
         const mask = document.getElementById('maskInput').value;
         const unmappedOnly = document.getElementById('unmappedOnly').checked, lenVal = document.getElementById('lenValue').value;
         
-        // On cumule la somme absolue de chaque mapping pour un compte donné
         Object.values(mappings).flat().forEach(m => {
             usageMap[m.accountId] = (usageMap[m.accountId] || 0) + Math.abs(m.value);
         });
@@ -420,7 +417,6 @@
 
         displayedAccounts = accounts.filter(acc => {
             const currentTotal = usageMap[acc.id] || 0;
-            // Mode non-mappé : masque si le compte est totalement soldé (atteint 100)
             if (unmappedOnly && currentTotal >= 100) return false;
             
             const fId = formatAccountId(acc.id, mask);
@@ -450,22 +446,22 @@
             const isSelected = selectedIds.includes(acc.id);
             const selectionClasses = isSelected ? 'bg-blue-600 text-white border-l-4 border-l-blue-900 shadow-inner acc-item-selected' : 'border-l-4 border-l-transparent text-slate-700 hover:bg-slate-50';
             
-            // Détermination dynamique de l'état couleur du témoin de droite
             let statusColor = "bg-transparent";
             let stateBadge = "";
             if (currentTotal > 0) {
-                if (currentTotal === 100) statusColor = "bg-emerald-500"; // Parfaitement clos
+                if (currentTotal === 100) statusColor = "bg-emerald-500";
                 else if (currentTotal < 100) {
-                    statusColor = "bg-amber-500"; // Partiel incomplet
+                    statusColor = "bg-amber-500";
                     stateBadge = `<span class="z-[20] absolute right-3 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border border-white/20">Reste: ${100 - currentTotal}</span>`;
                 } else {
-                    statusColor = "bg-red-500"; // Surcharge
+                    statusColor = "bg-red-500";
                     stateBadge = `<span class="z-[20] absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border border-white/20">Trop: +${currentTotal - 100}</span>`;
                 }
             }
 
+            // CORRECTION v8.3 : Intégration en direct de formatAccountId pour sécuriser la portée
             return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer transition-colors ${selectionClasses}" onclick="handleAccountClick(event, ${index})">
-                <span class="font-mono text-sm font-bold w-36 shrink-0 ${isSelected ? 'text-white' : 'text-slate-700'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${fId}</span>
+                <span class="font-mono text-sm font-bold w-36 shrink-0 ${isSelected ? 'text-white' : 'text-slate-700'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${formatAccountId(acc.id, mask)}</span>
                 <div class="acc-label-container">
                     <span class="acc-label-text text-[10px] uppercase font-medium ${isSelected ? 'text-blue-100' : 'text-slate-500'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${acc.label}</span>
                 </div>
@@ -489,7 +485,6 @@
         lastClickedIndex = index; renderAccounts();
     }
 
-    // EVOLUTION v8.3 : Routage d'interception du clic sur cellule (Normal vs Alt + Clic)
     function handleCellClick(e, cid) {
         if (!selectedIds.length) return;
         const info = cellInfoMap[cid];
@@ -502,11 +497,9 @@
         }
 
         if (e.altKey) {
-            // Déclenchement de la Pop-up Exception de Mapping Partiel
             e.preventDefault();
             openPartialPopup(cid, info, theoreticSens);
         } else {
-            // Mode Classique Auto 100%
             executeStandardMapping(cid, theoreticSens);
         }
     }
@@ -521,7 +514,6 @@
         triggerSuperFlash(cid); selectedIds = []; renderAccounts(); renderDynamicGrid();
     }
 
-    // FONCTIONS POP-UP MAPPING PARTIEL v8.3
     function openPartialPopup(cid, info, theoreticSens) {
         activePopupContext = { cid: cid, theoreticSens: theoreticSens, accountIds: [...selectedIds] };
         
@@ -577,7 +569,6 @@
         renderDynamicGrid();
     }
 
-    // EVOLUTION v8.3 : Refonte de l'en-tête de l'inspecteur de cellule et affichage des valeurs
     function openCellInspector(event, cid) {
         event.preventDefault(); const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
         ins.dataset.mode = "CELL"; ins.dataset.id = cid;
@@ -586,10 +577,8 @@
         const configSection = columnConfigs[info.section];
         if (configSection && configSection[info.colIndex]) { theoreticSens = configSection[info.colIndex].direction; }
 
-        // Format d'en-tête précis : Section | Code | RUBRIQUE | [nom de la colonne] | [ sens de la colonne ] | [ numéro de la cellule ]
         document.getElementById('ins-title').innerText = `${info.section} | ${info.rowId} | ${info.rowLabel} | ${info.colHeader} | [ SENS: ${theoreticSens > 0 ? '+' : ''}${theoreticSens} ] | [ CELLULE ${cid} ]`;
         
-        // Affichage du bouton "Tout Vider"
         const btnClear = document.getElementById('insBtnClearAll');
         btnClear.classList.remove('hidden');
         btnClear.onclick = () => { triggerClearAllCellMappings(cid); };
@@ -605,7 +594,6 @@
         refreshInspector(); showInspector(event.pageX, event.pageY);
     }
 
-    // EVOLUTION v8.3 : Ajout des valeurs de mapping à droite de chaque compte dans l'inspecteur
     function refreshInspector() {
         const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
         if (ins.dataset.mode === "CELL") {
@@ -640,7 +628,6 @@
         lucide.createIcons();
     }
 
-    // NOUVEAU v8.3 : Fonction de vidage massif pour purger une cellule en un clic
     function triggerClearAllCellMappings(cid) {
         const list = mappings[cid] || [];
         if (!list.length) return;

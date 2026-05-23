@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Stellantis Mapping Engine - v7.8</title>
+    <title>Stellantis Mapping Engine - v8.0</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -64,12 +64,13 @@
     <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-[100]">
         <div class="flex items-center gap-2">
             <input type="file" id="gridInput" accept=".xlsx, .xls" class="hidden">
-            <button onclick="document.getElementById('gridInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm">
-                <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-emerald-600"></i> Grille
+            <button onclick="document.getElementById('gridInput').click()" title="Forcer une autre grille locale" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-500 hover:bg-slate-50 shadow-sm">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-400"></i> Grille alternative
             </button>
+            
             <input type="file" id="balanceInput" accept=".csv, .xlsx, .xls" class="hidden">
-            <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm">
-                <i data-lucide="file-up" class="w-3.5 h-3.5 text-blue-600"></i> Balance
+            <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold shadow transition-all active:scale-95">
+                <i data-lucide="file-up" class="w-3.5 h-3.5"></i> Charger Balance
             </button>
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
             
@@ -112,12 +113,12 @@
                 </div>
             </div>
         </div>
-        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v7.8</span></div>
+        <div class="font-black tracking-tighter text-slate-900 text-sm italic uppercase">Mapping Engine <span class="text-blue-600">v8.0</span></div>
         <div class="flex items-center gap-3">
             <select id="section" class="bg-slate-800 text-white rounded px-3 py-1.5 text-[10px] font-bold outline-none border border-slate-700" onchange="switchSection()">
-                <option value="NONE">AUCUNE GRILLE</option>
+                <option value="NONE">CHARGEMENT GRILLE...</option>
             </select>
-            <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-sm transition-all active:scale-95">
+            <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-sm transition-all active:scale-95">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Export
             </button>
         </div>
@@ -197,10 +198,34 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); initDraggableInspector(); });
+    // ÉTAPE REVISEE v8.0 : Au démarrage, on charge les icônes, le drag et la grille automatisée
+    document.addEventListener('DOMContentLoaded', () => { 
+        lucide.createIcons(); 
+        initDraggableInspector(); 
+        loadAutoGrid(); 
+    });
 
     const colHeaders = ["Code", "Rubrique", "Unités", "CA Brut", "Remises", "CA Net", "Cout Achat", "Aides", "Marge"];
     let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=', selectedIds = [], lastClickedIndex = null;
+
+    // FONCTION NEW v8.0 : Récupère le fichier local de manière transparente
+    function loadAutoGrid() {
+        const targetGrid = './GRID_TO_LOAD.xlsx';
+        fetch(targetGrid)
+            .then(res => {
+                if (!res.ok) throw new Error(`Fichier ${targetGrid} introuvable sur le dépôt.`);
+                return res.arrayBuffer();
+            })
+            .then(buffer => {
+                processGridWorkbook(buffer);
+                console.log("Structure Git 'GRID_TO_LOAD.xlsx' chargée automatiquement.");
+            })
+            .catch(err => {
+                console.error("Erreur d'initialisation de la grille :", err);
+                document.getElementById('section').innerHTML = `<option value="NONE">ERREUR FICHIER</option>`;
+                alert("Attention : Le fichier 'GRID_TO_LOAD.xlsx' n'a pas pu être chargé depuis le dépôt Git. Vérifie sa présence à la racine.");
+            });
+    }
 
     function initDraggableInspector() {
         const ins = document.getElementById('inspector'), header = document.getElementById('ins-header');
@@ -230,24 +255,29 @@
         return result.join('.');
     }
 
+    // Processus unifié pour transformer le binaire Excel en structure utilisable
+    function processGridWorkbook(buffer) {
+        const data = new Uint8Array(buffer);
+        const workbook = XLSX.read(data, {type: 'array'});
+        sectionsData = {}; let options = "";
+        workbook.SheetNames.forEach((name, idx) => {
+            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 500);
+            if (sheetData.length > 0) {
+                sectionsData[name] = sheetData;
+                options += `<option value="${name}">${name}</option>`;
+                if (idx === 0) currentSection = name;
+            }
+        });
+        document.getElementById('section').innerHTML = options; 
+        document.getElementById('section').value = currentSection;
+        renderDynamicGrid();
+    }
+
+    // Écouteur manuel conservé en bypass de secours
     document.getElementById('gridInput').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(event) {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            sectionsData = {}; let options = "";
-            workbook.SheetNames.forEach((name, idx) => {
-                const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 500);
-                if (sheetData.length > 0) {
-                    sectionsData[name] = sheetData;
-                    options += `<option value="${name}">${name}</option>`;
-                    if (idx === 0) currentSection = name;
-                }
-            });
-            document.getElementById('section').innerHTML = options; document.getElementById('section').value = currentSection;
-            renderDynamicGrid();
-        };
+        reader.onload = function(event) { processGridWorkbook(event.target.result); };
         reader.readAsArrayBuffer(file);
     });
 
@@ -307,7 +337,6 @@
         Object.values(mappings).flat().forEach(id => usageMap[id] = (usageMap[id] || 0) + 1);
         document.getElementById('absRemains').innerText = accounts.filter(a => !usageMap[a.id]).length;
 
-        // ÉTAPE CRUCIALE v7.8 : On filtre les comptes AVANT le rendu pour le shift+clic
         displayedAccounts = accounts.filter(acc => {
             const usageCount = usageMap[acc.id] || 0;
             if (unmappedOnly && usageCount > 0) return false;
@@ -355,7 +384,6 @@
 
         if (e.shiftKey && lastClickedIndex !== null) {
             const start = Math.min(lastClickedIndex, index), end = Math.max(lastClickedIndex, index);
-            // On sélectionne uniquement dans la plage VISIBLE
             const rangeIds = displayedAccounts.slice(start, end + 1).map(a => a.id);
             selectedIds = Array.from(new Set([...selectedIds, ...rangeIds]));
         } else if (e.ctrlKey || e.metaKey) {
@@ -416,7 +444,7 @@
             ids.forEach(aid => { const acc = accounts.find(a => a.id === aid); rows.push(`${aid};${acc ? acc.label : ""};${cid};${sens}`); });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v7.8.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.0.csv`; link.click();
     }
 </script>
 </body>

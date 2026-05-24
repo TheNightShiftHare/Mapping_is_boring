@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v8.6b</title>
+    <title>Mapping Engine v8.6c</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -139,7 +139,7 @@
                 <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
                 <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
             </div>
-            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.6b</span>
+            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.6c</span>
         </div>
 
         <div class="flex items-center gap-3">
@@ -313,10 +313,11 @@
         return result.join('.');
     }
 
+    /* EVOLUTION CRUCIALE v8.6c : Indexation globale et complète de TOUTES les cellules de TOUTES les grilles dès le chargement */
     function processGridWorkbook(buffer) {
         const data = new Uint8Array(buffer);
         const workbook = XLSX.read(data, {type: 'array'});
-        sectionsData = {}; columnConfigs = {}; let options = "";
+        sectionsData = {}; columnConfigs = {}; cellInfoMap = {}; let options = "";
 
         workbook.SheetNames.forEach((name, idx) => {
             const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 502); 
@@ -331,6 +332,31 @@
                 }));
                 options += `<option value="${name}">${name}</option>`;
                 if (idx === 0) currentSection = name;
+
+                // Indexation globale immédiate (remplace le traitement localisé au render d'onglet)
+                const dataRows = sheetData.slice(2);
+                dataRows.forEach((row) => {
+                    const code = row[0] ? String(row[0]).trim() : "", label = row[1] || "", hasCode = code !== "";
+                    if (!hasCode) return;
+
+                    for(let cIdx = 2; cIdx < columnConfigs[name].length; cIdx++) {
+                        const val = row[cIdx];
+                        if (typeof val === 'number') {
+                            const isDecimalInversion = (val % 1 >= 0.85 && val % 1 <= 0.95);
+                            const cid = isDecimalInversion ? Math.floor(val) : Math.abs(val);
+                            
+                            // On stocke sans écraser si déjà présent (clé unique par ID de cellule)
+                            cellInfoMap[cid] = { 
+                                rowId: code, 
+                                rowLabel: label, 
+                                colHeader: columnConfigs[name][cIdx].title, 
+                                colIndex: cIdx, 
+                                section: name,
+                                invertSens: isDecimalInversion
+                            };
+                        }
+                    }
+                });
             }
         });
         document.getElementById('section').innerHTML = options; 
@@ -394,21 +420,11 @@
             
             for(let cIdx = 2; cIdx < config.length; cIdx++) {
                 const val = row[cIdx];
-                const colTitle = config[cIdx].title;
 
                 if (!hasCode) html += `<td class="col-data p-2 border-b border-slate-100 text-[10px] text-slate-500 italic text-center">${val || ""}</td>`;
                 else if (typeof val === 'number') {
                     const isDecimalInversion = (val % 1 >= 0.85 && val % 1 <= 0.95);
                     const cid = isDecimalInversion ? Math.floor(val) : Math.abs(val);
-                    
-                    cellInfoMap[cid] = { 
-                        rowId: code, 
-                        rowLabel: label, 
-                        colHeader: colTitle, 
-                        colIndex: cIdx, 
-                        section: currentSection,
-                        invertSens: isDecimalInversion
-                    };
                     
                     if (val < 0) html += `<td class="col-data p-1 border-b border-slate-100 text-center opacity-20 text-[10px]">🔒</td>`;
                     else {
@@ -611,7 +627,7 @@
             alert("Rien à sauvegarder pour le moment."); return;
         }
         const stateData = {
-            version: "8.6b",
+            version: "8.6c",
             mask: document.getElementById('maskInput').value,
             accounts: accounts,
             mappings: mappings
@@ -782,7 +798,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.6b.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.6c.csv`; link.click();
     }
 </script>
 </body>

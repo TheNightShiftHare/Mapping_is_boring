@@ -112,6 +112,26 @@
                     <span id="absRemains" class="text-[11px] font-black text-blue-900">0</span>
                 </div>
             </div>
+
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+            <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1 shadow-sm">
+                <span class="text-[8px] font-black text-slate-400 uppercase tracking-wider px-1">Sessions & Audit</span>
+                
+                <button onclick="exportStateJSON()" title="Sauvegarder l'état complet (En-cours + Balance)" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-white rounded transition-colors">
+                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                </button>
+                <input type="file" id="stateJsonInput" accept=".json" class="hidden" onchange="importStateJSON(event)">
+                <button onclick="document.getElementById('stateJsonInput').click()" title="Reprendre une session sauvegardée (.json)" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-white rounded transition-colors">
+                    <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
+                </button>
+                
+                <div class="w-px h-4 bg-slate-200 mx-0.5"></div>
+                
+                <input type="file" id="auditCsvInput" accept=".csv" class="hidden" onchange="importAuditCSV(event)">
+                <button onclick="document.getElementById('auditCsvInput').click()" title="Audit Externe : Charger un livrable existant (.csv)" class="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-100 hover:text-slate-900 shadow-xs">
+                    <i data-lucide="file-check" class="w-3 h-3 text-emerald-600"></i> Audit CSV
+                </button>
+            </div>
         </div>
         
         <div class="flex items-center gap-2 border-x border-slate-100 px-4 h-full select-none">
@@ -119,7 +139,7 @@
                 <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
                 <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
             </div>
-            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.5</span>
+            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.6</span>
         </div>
 
         <div class="flex items-center gap-3">
@@ -127,7 +147,7 @@
                 <option value="NONE">CHARGEMENT GRILLE...</option>
             </select>
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-sm transition-all active:scale-95">
-                <i data-lucide="download" class="w-3.5 h-3.5"></i> Export
+                <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Livrable
             </button>
         </div>
     </header>
@@ -358,7 +378,6 @@
         }).join('');
     }
 
-    // EVOLUTION v8.5 : Prise en compte de la décimale .9 pour stocker l'ID entier brut et lever le drapeau d'inversion de sens
     function renderDynamicGrid() {
         const grid = document.getElementById('mainGrid'), sheetData = sectionsData[currentSection];
         const config = columnConfigs[currentSection];
@@ -379,7 +398,6 @@
 
                 if (!hasCode) html += `<td class="col-data p-2 border-b border-slate-100 text-[10px] text-slate-500 italic text-center">${val || ""}</td>`;
                 else if (typeof val === 'number') {
-                    // Si le nombre a une décimale à .9 (ex: 515125.9), on isole l'entier 515125 et on active l'inversion
                     const isDecimalInversion = (val % 1 >= 0.85 && val % 1 <= 0.95);
                     const cid = isDecimalInversion ? Math.floor(val) : Math.abs(val);
                     
@@ -389,7 +407,7 @@
                         colHeader: colTitle, 
                         colIndex: cIdx, 
                         section: currentSection,
-                        invertSens: isDecimalInversion // Indique que cette cellule fonctionne à l'envers
+                        invertSens: isDecimalInversion
                     };
                     
                     if (val < 0) html += `<td class="col-data p-1 border-b border-slate-100 text-center opacity-20 text-[10px]">🔒</td>`;
@@ -472,7 +490,7 @@
             
             if (currentTotal > 0) {
                 if (currentTotal === 100) {
-                    if (occurrences > 1) statusColor = "bg-purple-600"; // Trait violet pour multi-mappé
+                    if (occurrences > 1) statusColor = "bg-purple-600";
                     else statusColor = "bg-emerald-500";
                 }
                 else if (currentTotal < 100) {
@@ -520,7 +538,6 @@
             theoreticSens = configSection[info.colIndex].direction;
         }
 
-        // EVOLUTION v8.5 : Inversion à la volée de la direction théorique si le drapeau invertSens est actif
         if (info.invertSens) {
             theoreticSens = theoreticSens * -1;
         }
@@ -545,7 +562,6 @@
 
     function openPartialPopup(cid, info, theoreticSens) {
         activePopupContext = { cid: cid, theoreticSens: theoreticSens, accountIds: [...selectedIds] };
-        
         document.getElementById('popSection').innerText = info.section;
         document.getElementById('popCellLabel').innerText = `${info.rowId} | ${info.rowLabel} | ${info.colHeader}`;
         document.getElementById('popSens').innerText = `${theoreticSens > 0 ? '+' : ''}${theoreticSens}`;
@@ -558,15 +574,13 @@
         setTimeout(() => {
             pop.classList.remove('opacity-0');
             pop.firstElementChild.classList.remove('scale-95');
-            input.focus();
-            input.select();
+            input.focus(); input.select();
         }, 10);
     }
 
     function closePartialPopup() {
         const pop = document.getElementById('partialPopup');
-        pop.classList.add('opacity-0');
-        pop.firstElementChild.classList.add('scale-95');
+        pop.classList.add('opacity-0'); pop.firstElementChild.classList.add('scale-95');
         setTimeout(() => { pop.classList.add('hidden'); activePopupContext = null; }, 150);
     }
 
@@ -577,9 +591,7 @@
 
         if (isNaN(val) || val === 0 || val < -100 || val > 100) {
             alert("Erreur : La valeur doit être un entier compris entre -100 et 100 (excluant 0).");
-            input.focus();
-            input.select();
-            return;
+            input.focus(); input.select(); return;
         }
 
         const cid = activePopupContext.cid;
@@ -591,11 +603,106 @@
             }
         });
 
-        triggerSuperFlash(cid);
-        selectedIds = [];
-        closePartialPopup();
-        renderAccounts();
-        renderDynamicGrid();
+        triggerSuperFlash(cid); selectedIds = []; closePartialPopup(); renderAccounts(); renderDynamicGrid();
+    }
+
+    /* EVOLUTION v8.6 - POINT 3 : EXPORT COMPLET DE L'ETAT DE LA SESSION (JSON) */
+    function exportStateJSON() {
+        if (!accounts.length && !Object.keys(mappings).length) {
+            alert("Rien à sauvegarder pour le moment."); return;
+        }
+        const stateData = {
+            version: "8.6",
+            mask: document.getElementById('maskInput').value,
+            accounts: accounts,
+            mappings: mappings
+        };
+        const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `session_backup_${new Date().toISOString().slice(0,10)}.json`;
+        link.click();
+    }
+
+    /* EVOLUTION v8.6 - POINT 3 : REPRISE COMPLETE DE LA SESSION DE TRAVAIL (JSON) */
+    function importStateJSON(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const stateData = JSON.parse(e.target.result);
+                if (!stateData.accounts || !stateData.mappings) {
+                    throw new Error("Structure de fichier de session invalide.");
+                }
+                // Restauration complète des variables globales
+                accounts = stateData.accounts || [];
+                mappings = stateData.mappings || {};
+                document.getElementById('maskInput').value = stateData.mask || "";
+                document.getElementById('totalAcc').innerText = accounts.length;
+                
+                renderAccounts();
+                renderDynamicGrid();
+                alert("Session restaurée avec succès !");
+            } catch (err) {
+                alert("Erreur lors de la lecture du fichier de session : " + err.message);
+            }
+            event.target.value = ''; // Reset input
+        };
+        reader.readAsText(file);
+    }
+
+    /* EVOLUTION v8.6 - POINT 4 : IMPORT ET RECONSTRUCTION POUR AUDIT DE LIVRABLE EXTERNE (CSV) */
+    function importAuditCSV(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            const lines = content.split('\n');
+            
+            let tempAccountsMap = new Map();
+            let tempMappings = {};
+
+            // Si une balance existait déjà, on la conserve comme base, sinon on part à blanc
+            accounts.forEach(a => tempAccountsMap.set(a.id, a.label));
+
+            lines.forEach(line => {
+                // Nettoyage de la marque BOM si présente et découpage
+                let cleanLine = line.replace(/^\uFEFF/, '').trim();
+                if (!cleanLine) return;
+                
+                const parts = cleanLine.split(';');
+                if (parts.length < 4) return; // Ligne incomplète
+
+                const accId = parts[0].trim();
+                const accLabel = parts[1].trim();
+                const cellId = parseInt(parts[2].trim());
+                const mapValue = parseInt(parts[3].trim());
+
+                if (!accId || isNaN(cellId) || isNaN(mapValue)) return;
+
+                // Reconstruction de l'arbre des comptes de gauche
+                if (!tempAccountsMap.has(accId)) {
+                    tempAccountsMap.set(accId, accLabel || `Compte Audité ${accId}`);
+                }
+
+                // Ré-affectation dans les structures de cellules à droite
+                if (!tempMappings[cellId]) tempMappings[cellId] = [];
+                if (!tempMappings[cellId].some(m => m.accountId === accId)) {
+                    tempMappings[cellId].push({ accountId: accId, value: mapValue });
+                }
+            });
+
+            // Injection dans le moteur
+            accounts = Array.from(tempAccountsMap.entries()).map(([id, label]) => ({ id, label }));
+            mappings = tempMappings;
+
+            document.getElementById('totalAcc').innerText = accounts.length;
+            renderAccounts();
+            renderDynamicGrid();
+            alert(`Livrable importé pour Audit. ${accounts.length} comptes synchronisés sur la grille.`);
+            event.target.value = '';
+        };
+        reader.readAsText(file, "UTF-8");
     }
 
     function openCellInspector(event, cid) {
@@ -605,8 +712,6 @@
         let theoreticSens = 100;
         const configSection = columnConfigs[info.section];
         if (configSection && configSection[info.colIndex]) { theoreticSens = configSection[info.colIndex].direction; }
-        
-        // Prise en compte de l'inversion dans l'affichage du titre de l'inspecteur
         if (info.invertSens) theoreticSens = theoreticSens * -1;
 
         document.getElementById('ins-title').innerText = `${info.section} | ${info.rowId} | ${info.rowLabel} | ${info.colHeader} | [ SENS: ${theoreticSens > 0 ? '+' : ''}${theoreticSens} ] | [ CELLULE ${cid} ]`;
@@ -646,12 +751,12 @@
                 if (matchedRecord) found.push({ cid, value: matchedRecord.value, info: cellInfoMap[cid] }); 
             }
             body.innerHTML = found.map(f => `<div class="flex items-center gap-3 p-2 bg-white border rounded shadow-sm">
-                <span class="text-[9px] font-bold text-slate-400 uppercase shrink-0">${f.info.section}</span>
+                <span class="text-[9px] font-bold text-slate-400 uppercase shrink-0">${f.info ? f.info.section : 'INCONNU'}</span>
                 <span class="text-emerald-600 font-black text-sm w-12 text-center border-x px-2">${f.cid}</span>
                 <div class="flex flex-1 items-center gap-2 px-2 overflow-hidden text-[10px] font-bold uppercase">
-                    <span class="text-slate-400 font-mono">${f.info.rowId}</span>
-                    <span class="text-slate-600 truncate">${f.info.rowLabel}</span>
-                    <span class="text-blue-600 shrink-0">${f.info.colHeader}</span>
+                    <span class="text-slate-400 font-mono">${f.info ? f.info.rowId : '???'}</span>
+                    <span class="text-slate-600 truncate">${f.info ? f.info.rowLabel : 'Compte Orphelin'}</span>
+                    <span class="text-blue-600 shrink-0">${f.info ? f.info.colHeader : 'Col'}</span>
                 </div>
                 <span class="text-xs font-black font-mono w-12 text-center ${f.value > 0 ? 'text-blue-600' : 'text-amber-600'}">${f.value > 0 ? '+' : ''}${f.value}</span>
                 <button class="text-red-400 hover:text-red-600 p-1.5 rounded" onclick="removeMapping('${f.cid}','${id}')"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
@@ -664,20 +769,16 @@
         const list = mappings[cid] || [];
         if (!list.length) return;
         if (confirm(`Voulez-vous détacher les ${list.length} comptes liés à cette cellule d'un seul coup ?`)) {
-            mappings[cid] = [];
-            closeInspector();
-            renderAccounts();
-            renderDynamicGrid();
+            mappings[cid] = []; closeInspector(); renderAccounts(); renderDynamicGrid();
         }
     }
 
     function removeMapping(cid, aid) { 
-        if (mappings[cid]) {
-            mappings[cid] = mappings[cid].filter(m => m.accountId !== aid); 
-        }
+        if (mappings[cid]) { mappings[cid] = mappings[cid].filter(m => m.accountId !== aid); }
         refreshInspector(); renderAccounts(); renderDynamicGrid(); 
     }
     
+     TarshowInspector(x, y) { const ins = document.getElementById('inspector'); ins.classList.remove('hidden'); ins.style.left = Math.min(x, window.innerWidth - 730) + 'px'; ins.style.top = Math.min(y, window.innerHeight - 460) + 'px'; setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); }
     function showInspector(x, y) { const ins = document.getElementById('inspector'); ins.classList.remove('hidden'); ins.style.left = Math.min(x, window.innerWidth - 730) + 'px'; ins.style.top = Math.min(y, window.innerHeight - 460) + 'px'; setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); }
     function closeInspector() { const ins = document.getElementById('inspector'); ins.classList.remove('scale-100', 'opacity-100'); setTimeout(() => ins.classList.add('hidden'), 200); }
     function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
@@ -691,7 +792,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.5.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.6.csv`; link.click();
     }
 </script>
 </body>

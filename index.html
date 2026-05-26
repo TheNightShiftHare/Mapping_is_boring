@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v8.7b</title>
+    <title>Mapping Engine v8.7c</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -29,7 +29,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .inspector-blur { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.98); }
         
-        /* GRILLE ULTRA-COMPACTE (V8.7) */
+        /* GRILLE ULTRA-COMPACTE */
         .grid-fixed { table-layout: fixed; width: 100%; border-spacing: 0; }
         .col-code { width: 40px; min-width: 40px; }
         .col-label { width: 200px; min-width: 200px; }
@@ -44,15 +44,18 @@
 
         .acc-item-selected:hover { background-color: #1e40af !important; }
 
+        /* CORRECTIF CORRECT POUR FLYOVER (V8.7c) */
         .acc-label-container { 
-            position: relative; flex: 1; min-width: 0; height: 1.5rem; display: flex; align-items: center;
+            position: relative; flex: 1; min-width: 0; display: flex; align-items: center;
         }
         .acc-label-text { 
-            display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 10;
+            display: block; width: 100%; text-transform: uppercase; font-weight: 500; font-size: 10px; z-index: 10;
         }
+        /* Déploiement au survol de la ligne */
         .acc-row:hover .acc-label-text {
-            position: absolute; left: 0; width: auto; min-width: 100%; padding-right: 20px; z-index: 100;
-            background: inherit; box-shadow: 15px 0 15px -10px rgba(0,0,0,0.2); overflow: visible;
+            position: absolute; left: 0; width: auto; min-width: 100%; padding-right: 24px; z-index: 100;
+            overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important;
+            background: inherit; box-shadow: 10px 0 15px rgba(0,0,0,0.15); border-radius: 0 4px 4px 0;
         }
 
         .help-tooltip { visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s; }
@@ -109,7 +112,7 @@
                 </div>
                 <div class="w-px h-6 bg-blue-200"></div>
                 <div class="flex flex-col items-end">
-                    <span class="text-[8px] font-black text-blue-400 uppercase leading-none">Restants</span>
+                    <span class="text-[8px] font-black text-slate-400 uppercase leading-none">Restants</span>
                     <span id="absRemains" class="text-[11px] font-black text-blue-900">0</span>
                 </div>
             </div>
@@ -140,7 +143,7 @@
                 <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
                 <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
             </div>
-            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.7b</span>
+            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.7c</span>
         </div>
 
         <div class="flex items-center gap-3">
@@ -516,11 +519,11 @@
                 }
             }
 
-            // RECALIBRAGE ET AJUSTEMENT DE LA LIGNE COMPTE (V8.7b)
+            // RECONSTRUCTION DE LA CELLULE AVEC TRONQUAGE FIXÉ & FLYOVER OPÉRATIONNEL
             return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer transition-colors ${selectionClasses}" onclick="handleAccountClick(event, ${index})">
                 <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-700'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${formatAccountId(acc.id, mask)}</span>
-                <div class="acc-label-container">
-                    <span class="acc-label-text text-[10px] uppercase font-medium ${isSelected ? 'text-blue-100' : 'text-slate-500'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${acc.label}</span>
+                <div class="acc-label-container min-w-0 w-full overflow-hidden">
+                    <span class="acc-label-text truncate ${isSelected ? 'text-blue-100' : 'text-slate-500'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${acc.label}</span>
                 </div>
                 ${stateBadge}
                 <div class="absolute right-0 top-0 bottom-0 w-1 ${statusColor}"></div>
@@ -626,7 +629,7 @@
             alert("Rien à sauvegarder pour le moment."); return;
         }
         const stateData = {
-            version: "8.7b",
+            version: "8.7c",
             mask: document.getElementById('maskInput').value,
             accounts: accounts,
             mappings: mappings
@@ -797,7 +800,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.7b.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.7c.csv`; link.click();
     }
 </script>
 </body>

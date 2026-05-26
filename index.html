@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v10.0-TEST2</title>
+    <title>Mapping Engine v10.1</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -46,6 +46,22 @@
 
         .help-tooltip { visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s; }
         .help-trigger:hover .help-tooltip { visibility: visible; opacity: 1; }
+        
+        /* Tooltip dynamique au survol des comptes */
+        #account-hover-tooltip {
+            position: fixed;
+            pointer-events: none;
+            z-index: 5000;
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body class="bg-slate-100 h-screen overflow-hidden font-sans text-slate-800">
@@ -119,23 +135,23 @@
             <div class="flex items-center gap-3 border-l border-slate-200 pl-4 h-full select-none shrink-0">
                 <div class="flex flex-col items-end">
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
-                    <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">Eric MUNSCHI</span>
+                    <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.0-TEST</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.1</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Mapping
             </button>
 
-            <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-300 rounded p-1 shadow-inner">
-                <select id="brandSelect" class="bg-white text-slate-800 rounded px-2 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors shrink-0 max-w-[120px]" onchange="handleBrandChange()">
+            <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-300 rounded p-1 shadow-inner shrink-0">
+                <select id="brandSelect" class="w-[110px] min-w-[110px] max-w-[110px] bg-white text-slate-800 rounded px-2 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors truncate" onchange="handleBrandChange()">
                     <option value="ALL">TOUTES</option>
                 </select>
                 
-                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400"></i>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400 shrink-0"></i>
 
-                <select id="section" class="bg-white text-blue-600 rounded px-2.5 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors shrink-0" onchange="switchSection()">
+                <select id="section" class="w-[170px] min-w-[170px] max-w-[170px] bg-white text-blue-600 rounded px-2.5 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors truncate" onchange="switchSection()">
                     <option value="NONE">CHARGEMENT GRILLE...</option>
                 </select>
             </div>
@@ -209,16 +225,18 @@
     </div>
 </div>
 
-<div id="inspector" class="fixed hidden z-[1000] w-[720px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-200 scale-95 opacity-0">
-    <div id="ins-header" class="bg-slate-900 p-2.5 flex justify-between items-center text-white font-bold text-[10px] uppercase">
+<div id="inspector" class="fixed hidden z-[1000] w-[450px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-200 scale-95 opacity-0">
+    <div id="ins-header" class="bg-slate-900 p-2.5 flex justify-between items-center text-white font-bold text-[10px] uppercase cursor-move select-none">
         <div class="flex items-center gap-2 flex-1 min-w-0 mr-4">
             <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400"></i>
-            <span id="ins-title" class="truncate font-black text-slate-200"></span>
+            <span id="ins-title" class="truncate font-black text-slate-200">INSPECTEUR</span>
         </div>
         <button onclick="closeInspector()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
-    <div id="ins-body" class="max-h-[450px] overflow-y-auto custom-scrollbar p-2 bg-white/50 space-y-1"></div>
+    <div id="ins-body" class="max-h-[350px] overflow-y-auto custom-scrollbar p-3 bg-white/95 space-y-2"></div>
 </div>
+
+<div id="account-hover-tooltip" class="hidden"></div>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => { 
@@ -230,9 +248,9 @@
     let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=', selectedIds = [], lastClickedIndex = null;
     let columnConfigs = {}; 
     let activePopupContext = null;
-
     let brandMapping = {}; 
     let selectedBrand = "ALL";
+    let tooltipTimeout = null;
 
     function loadAutoGrid() {
         const targetGrid = './GRID_TO_LOAD.xlsx';
@@ -338,7 +356,7 @@
         if (targetSectionToPreserve && filteredSheets.includes(targetSectionToPreserve)) {
             currentSection = targetSectionToPreserve;
         } else if (filteredSheets.includes(currentSection)) {
-            // Reste sur la section actuelle
+            // Reste stable sur la sélection actuelle
         } else {
             currentSection = filteredSheets[0];
         }
@@ -353,12 +371,10 @@
         updateSectionSelector();
     }
 
-    if (typeof switchSection === 'undefined') {
-        window.switchSection = function() {
-            currentSection = document.getElementById('section').value; 
-            renderDynamicGridHeader();
-            renderDynamicGrid(); 
-        }
+    window.switchSection = function() {
+        currentSection = document.getElementById('section').value; 
+        renderDynamicGridHeader();
+        renderDynamicGrid(); 
     }
 
     function exportStateJSON() {
@@ -366,7 +382,7 @@
             alert("Rien à sauvegarder."); return;
         }
         const stateData = {
-            version: "10.0",
+            version: "10.1",
             mask: document.getElementById('maskInput').value,
             selectedBrand: selectedBrand,
             currentSection: currentSection,
@@ -470,7 +486,7 @@
             const data = new Uint8Array(event.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ id: String(r[0]), label: String(r[1] || '') }));
+            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ id: String(r[0]).trim(), label: String(r[1] || '') }));
             document.getElementById('totalAcc').innerText = accounts.length; renderAccounts();
         };
         reader.readAsArrayBuffer(file);
@@ -520,7 +536,12 @@
                 else if (cur < 100) { sColor = "bg-amber-500"; badge = `<span class="absolute right-3 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Reste: ${100 - cur}</span>`; }
                 else { sColor = "bg-red-500"; badge = `<span class="absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Trop: +${cur - 100}</span>`; }
             }
-            return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}" onclick="handleAccountClick(event, ${index})">
+            
+            // Re-injection complete des evenements de survol (fly-over 2 secondes)
+            return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}" 
+                onclick="handleAccountClick(event, ${index})"
+                onmouseenter="startAccountTooltip(event, ${index})"
+                onmouseleave="clearAccountTooltip()">
                 <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2">${formatAccountId(acc.id, mask)}</span>
                 <div class="flex-1 min-w-0 pr-16"><span class="block max-w-[340px] truncate text-[10px] uppercase font-bold ${isSel ? 'text-blue-100' : 'text-slate-500'}">${acc.label}</span></div>
                 ${badge}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
@@ -534,26 +555,69 @@
         if (pos < id.length) res.push(id.substring(pos)); return res.join('.');
     }
 
+    // GESTION DE LA SÉLECTION DES COMPTES - LOGIQUE SÉCURISÉE ET SYNCHRONISÉE
     function handleAccountClick(e, index) {
-        const cid = displayedAccounts[index].id;
+        if (index < 0 || index >= displayedAccounts.length) return;
+        const targetId = String(displayedAccounts[index].id);
+        
         if (e.shiftKey && lastClickedIndex !== null) {
-            const start = Math.min(lastClickedIndex, index), end = Math.max(lastClickedIndex, index);
-            selectedIds = Array.from(new Set([...selectedIds, ...displayedAccounts.slice(start, end + 1).map(a => a.id)]));
+            const start = Math.min(lastClickedIndex, index);
+            const end = Math.max(lastClickedIndex, index);
+            const blockIds = displayedAccounts.slice(start, end + 1).map(a => String(a.id));
+            selectedIds = Array.from(new Set([...selectedIds, ...blockIds]));
         } else if (e.ctrlKey || e.metaKey) {
-            selectedIds.includes(cid) ? selectedIds = selectedIds.filter(id => id !== cid) : selectedIds.push(cid);
+            if (selectedIds.includes(targetId)) {
+                selectedIds = selectedIds.filter(id => id !== targetId);
+            } else {
+                selectedIds.push(targetId);
+            }
         } else {
-            selectedIds = (selectedIds.length === 1 && selectedIds[0] === cid) ? [] : [cid];
+            if (selectedIds.length === 1 && selectedIds[0] === targetId) {
+                selectedIds = [];
+            } else {
+                selectedIds = [targetId];
+            }
         }
-        lastClickedIndex = index; renderAccounts();
+        lastClickedIndex = index; 
+        renderAccounts();
+    }
+
+    // TIMEOUT DE 2 SECONDES POUR LE SURVOL DU LIBELLÉ DE COMPTE (FLY-OVER)
+    function startAccountTooltip(e, index) {
+        clearAccountTooltip();
+        const acc = displayedAccounts[index];
+        if (!acc) return;
+        
+        tooltipTimeout = setTimeout(() => {
+            const tooltip = document.getElementById('account-hover-tooltip');
+            tooltip.innerText = `${acc.id} - ${acc.label.toUpperCase()}`;
+            tooltip.className = "fixed bg-slate-900 text-white text-[11px] font-bold p-2 rounded shadow-2xl z-[5000] border border-slate-700 pointer-events-none";
+            tooltip.style.left = (e.clientX + 15) + 'px';
+            tooltip.style.top = (e.clientY + 15) + 'px';
+        }, 2000); // Déclenchement strict après 2 secondes
+    }
+
+    function clearAccountTooltip() {
+        if (tooltipTimeout) clearTimeout(tooltipTimeout);
+        const tooltip = document.getElementById('account-hover-tooltip');
+        tooltip.className = "hidden";
     }
 
     function handleCellClick(e, cid) {
         if (!selectedIds.length) return; const info = cellInfoMap[cid]; if (!info) return;
-        let sens = columnConfigs[info.section][info.colIndex].direction; if (info.invertSens) sens *= -1;
-        if (e.altKey) { e.preventDefault(); openPartialPopup(cid, info, sens); }
-        else {
+        let baseDir = columnConfigs[info.section][info.colIndex].direction; 
+        if (info.invertSens) baseDir *= -1;
+        
+        if (e.altKey) { 
+            e.preventDefault(); 
+            openPartialPopup(cid, info, baseDir); 
+        } else {
             if (!mappings[cid]) mappings[cid] = [];
-            selectedIds.forEach(id => { if (!mappings[cid].some(m => m.accountId === id)) mappings[cid].push({ accountId: id, value: sens }); });
+            selectedIds.forEach(id => { 
+                if (!mappings[cid].some(m => m.accountId === id)) {
+                    mappings[cid].push({ accountId: id, value: baseDir * 100 }); 
+                } 
+            });
             triggerSuperFlash(cid); selectedIds = []; renderAccounts(); renderDynamicGrid();
         }
     }
@@ -566,47 +630,106 @@
         document.body.appendChild(overlay); overlay.addEventListener('animationend', () => overlay.remove());
     }
 
-    function openPartialPopup(cid, info, sens) {
-        activePopupContext = { cid: cid, theoreticSens: sens, accountIds: [...selectedIds] };
+    // CORRECTION DU SENS THÉORIQUE PAR DÉFAUT POUR LE MAPPING PARTIEL
+    function openPartialPopup(cid, info, baseDir) {
+        activePopupContext = { cid: cid, theoreticSens: baseDir, accountIds: [...selectedIds] };
         document.getElementById('popSection').innerText = info.section;
         document.getElementById('popCellLabel').innerText = `${info.rowId} | ${info.colHeader}`;
-        document.getElementById('popSens').innerText = `${sens > 0 ? '+' : ''}${sens}`;
-        const input = document.getElementById('popValueInput'); input.value = sens;
-        const pop = document.getElementById('partialPopup'); pop.classList.remove('hidden');
+        document.getElementById('popSens').innerText = `${baseDir > 0 ? '+' : ''}${baseDir * 100}`;
+        
+        const input = document.getElementById('popValueInput'); 
+        input.value = baseDir * 100; // Injecte directement +100 ou -100 par défaut selon le sens théorique de la cellule
+        
+        const pop = document.getElementById('partialPopup'); 
+        pop.classList.remove('hidden');
         setTimeout(() => { pop.classList.remove('opacity-0'); input.focus(); input.select(); }, 10);
     }
+    
     function closePartialPopup() { document.getElementById('partialPopup').classList.add('hidden'); activePopupContext = null; }
+    
     function submitPartialPopup() {
         const v = parseInt(document.getElementById('popValueInput').value);
         if (isNaN(v) || v === 0 || v < -100 || v > 100) return;
         if (!mappings[activePopupContext.cid]) mappings[activePopupContext.cid] = [];
-        activePopupContext.accountIds.forEach(id => { if (!mappings[activePopupContext.cid].some(m => m.accountId === id)) mappings[activePopupContext.cid].push({ accountId: id, value: v }); });
+        activePopupContext.accountIds.forEach(id => { 
+            if (!mappings[activePopupContext.cid].some(m => m.accountId === id)) {
+                mappings[activePopupContext.cid].push({ accountId: id, value: v }); 
+            } 
+        });
         triggerSuperFlash(activePopupContext.cid); selectedIds = []; closePartialPopup(); renderAccounts(); renderDynamicGrid();
     }
 
+    // INSPECTEUR DES CELLULES (CLIC DROIT CORRIGÉ ET RETOUR DE L'AFFICHAGE)
     function openCellInspector(event, cid) {
         event.preventDefault(); const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
         ins.dataset.mode = "CELL"; ins.dataset.id = cid;
         document.getElementById('ins-title').innerText = `CELLULE ${cid} | ${info.section} - ${info.rowId}`;
         refreshInspector(); showInspector(event.pageX, event.pageY);
     }
+    
     function refreshInspector() {
         const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
         if (ins.dataset.mode === "CELL") {
             const list = mappings[id] || [];
-            body.innerHTML = list.map(m => `<div class="flex items-center justify-between p-2 bg-white border rounded shadow-sm">
-                <span class="font-mono font-bold text-blue-700">${formatAccountId(m.accountId, mask)}</span>
-                <span class="text-xs font-black">${m.value > 0 ? '+' : ''}${m.value}</span>
-                <button onclick="removeMapping('${id}','${m.accountId}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-            </div>`).join(list.length ? '' : '<div class="p-4 text-xs text-slate-400">Vide</div>');
+            body.innerHTML = list.map(m => {
+                const acc = accounts.find(a => a.id === m.accountId);
+                const label = acc ? acc.label : "Libellé inconnu";
+                return `<div class="flex flex-col p-2 bg-white border rounded shadow-sm gap-1">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono font-bold text-blue-700 text-xs">${formatAccountId(m.accountId, mask)}</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-black ${m.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${m.value > 0 ? '+' : ''}${m.value}</span>
+                            <button onclick="removeMapping('${id}','${m.accountId}')" class="text-slate-400 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+                    <span class="text-[9px] uppercase font-bold text-slate-400 truncate max-w-[400px]">${label}</span>
+                </div>`;
+            }).join(list.length ? '' : '<div class="p-4 text-xs text-slate-400 text-center italic">Aucun compte adressé sur cette cellule.</div>');
         }
         lucide.createIcons();
     }
+    
     function removeMapping(cid, aid) { if(mappings[cid]) mappings[cid] = mappings[cid].filter(m => m.accountId !== aid); refreshInspector(); renderAccounts(); renderDynamicGrid(); }
-    function showInspector(x, y) { const ins = document.getElementById('inspector'); ins.classList.remove('hidden'); ins.style.left = x+'px'; ins.style.top = y+'px'; setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); }
+    
+    function showInspector(x, y) { 
+        const ins = document.getElementById('inspector'); 
+        ins.classList.remove('hidden'); 
+        ins.style.left = x+'px'; 
+        ins.style.top = y+'px'; 
+        setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); 
+    }
+    
     function closeInspector() { document.getElementById('inspector').classList.add('hidden'); }
     function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
-    function initDraggableInspector() {}
+
+    // RÉIMPLÉMENTATION DU DRAG & DROP DE L'INSPECTEUR
+    function initDraggableInspector() {
+        const inspector = document.getElementById('inspector');
+        const header = document.getElementById('ins-header');
+        if (!inspector || !header) return;
+
+        let isDragging = false;
+        let offsetX = 0, offsetY = 0;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return; // Ne pas drag si on clique sur le bouton fermer
+            isDragging = true;
+            offsetX = e.clientX - inspector.getBoundingClientRect().left;
+            offsetY = e.clientY - inspector.getBoundingClientRect().top;
+            header.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            inspector.style.left = (e.clientX - offsetX) + 'px';
+            inspector.style.top = (e.clientY - offsetY) + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            header.style.cursor = 'move';
+        });
+    }
 
     function exportMappingCSV() {
         let rows = [];

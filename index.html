@@ -1,8 +1,9 @@
+<!-- MAPPING ENGINE VERSION : v8.8a (Header Layout Remodeling) -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v8.7d</title>
+    <title>Mapping Engine v8.8a</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -51,20 +52,16 @@
 <body class="bg-slate-100 h-screen overflow-hidden font-sans text-slate-800">
 
 <div class="flex flex-col h-full">
-    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-[100]">
-        <div class="flex items-center gap-2">
-            <input type="file" id="gridInput" accept=".xlsx, .xls" class="hidden">
-            <button onclick="document.getElementById('gridInput').click()" title="Forcer une autre grille locale" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-500 hover:bg-slate-50 shadow-sm">
-                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-400"></i> Grille alternative
-            </button>
-            
+    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-[100]">
+        <div class="flex items-center gap-3">
+            <!-- 1// CHARGER BALANCE (1ER A GAUCHE) -->
             <input type="file" id="balanceInput" accept=".csv, .xlsx, .xls" class="hidden">
-            <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold shadow transition-all active:scale-95">
+            <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold shadow transition-all active:scale-95 shrink-0">
                 <i data-lucide="file-up" class="w-3.5 h-3.5"></i> Charger Balance
             </button>
-            <div class="h-6 w-px bg-slate-200 mx-1"></div>
             
-            <div class="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1 shadow-inner">
+            <!-- 2// BLOC STATS, MASQUE ET FILTRE NON-MAPPÉS -->
+            <div class="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1 shadow-inner shrink-0">
                 <div class="flex flex-col">
                     <span class="text-[8px] font-black text-blue-400 uppercase leading-none">Comptes</span>
                     <span id="totalAcc" class="text-[11px] font-black text-blue-700">0</span>
@@ -87,7 +84,7 @@
                         </div>
                     </div>
                     <input type="text" id="maskInput" placeholder="Masque" 
-                        class="w-20 bg-white border border-blue-200 rounded px-1.5 py-0.5 text-[10px] font-black text-blue-800 outline-none focus:border-blue-500 shadow-sm placeholder:text-blue-200" 
+                        class="w-16 bg-white border border-blue-200 rounded px-1.5 py-0.5 text-[10px] font-black text-blue-800 outline-none focus:border-blue-500 shadow-sm placeholder:text-blue-200" 
                         oninput="this.value = this.value.replace(/[^0-9.]/g, ''); renderAccounts()">
                 </div>
 
@@ -99,13 +96,17 @@
                 <div class="w-px h-6 bg-blue-200"></div>
                 <div class="flex flex-col items-end">
                     <span class="text-[8px] font-black text-slate-400 uppercase leading-none">Restants</span>
-                    <span id="absRemains" class="text-[11px] font-black text-blue-900">0</span>
+                    <div class="flex items-baseline gap-1 leading-none">
+                        <span id="absRemains" class="text-[11px] font-black text-blue-900">0</span>
+                        <span id="pctRemains" class="text-[9px] font-bold text-blue-500">(0%)</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="h-6 w-px bg-slate-200 mx-1"></div>
-            <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1 shadow-sm">
-                <span class="text-[8px] font-black text-slate-400 uppercase tracking-wider px-1">Sessions & Audit</span>
+            <!-- 3// BLOC SESSIONS & AUDIT (ALIGNÉ AVEC L'ASIDE DE 605PX + MARGE DE LA GRILLE) -->
+            <!-- Placé dynamiquement par l'espace restant, commence à l'orée de la zone centrale -->
+            <div class="ml-14 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1 shadow-sm shrink-0">
+                <span class="text-[8px] font-black text-slate-400 uppercase tracking-wider px-1">Sauve WIP</span>
                 
                 <button onclick="exportStateJSON()" title="Sauvegarder l'état complet (En-cours + Balance)" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-white rounded transition-colors">
                     <i data-lucide="save" class="w-3.5 h-3.5"></i>
@@ -118,21 +119,24 @@
                 <div class="w-px h-4 bg-slate-200 mx-0.5"></div>
                 
                 <input type="file" id="auditCsvInput" accept=".csv" class="hidden" onchange="importAuditCSV(event)">
-                <button onclick="document.getElementById('auditCsvInput').click()" title="Audit Externe : Charger un livrable existant (.csv)" class="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-100 hover:text-slate-900 shadow-xs">
-                    <i data-lucide="file-check" class="w-3 h-3 text-emerald-600"></i> Audit CSV
+                <!-- BOUTON AUDIT EPURÉ SANS TEXTE POUR COHÉRENCE VISUELLE -->
+                <button onclick="document.getElementById('auditCsvInput').click()" title="Audit Externe : Charger un livrable existant (.csv)" class="p-1 text-slate-600 hover:text-emerald-600 hover:bg-white rounded transition-colors">
+                    <i data-lucide="file-check" class="w-3.5 h-3.5 text-emerald-600"></i>
                 </button>
             </div>
         </div>
         
-        <div class="flex items-center gap-2 border-x border-slate-100 px-4 h-full select-none">
+        <!-- COMMERCE / MARQUE -->
+        <div class="flex items-center gap-2 border-x border-slate-100 px-4 h-full select-none shrink-0">
             <div class="flex flex-col items-end">
                 <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
                 <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
             </div>
-            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.7d</span>
+            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.8a</span>
         </div>
 
-        <div class="flex items-center gap-3">
+        <!-- ACTIONS DE DROITE -->
+        <div class="flex items-center gap-3 shrink-0">
             <select id="section" class="bg-slate-800 text-white rounded px-3 py-1.5 text-[10px] font-bold outline-none border border-slate-700" onchange="switchSection()">
                 <option value="NONE">CHARGEMENT GRILLE...</option>
             </select>
@@ -182,7 +186,8 @@
                     <table class="grid-fixed">
                         <thead>
                             <tr id="headerRow">
-                                </tr>
+                                <!-- Rempli dynamiquement -->
+                            </tr>
                         </thead>
                     </table>
                 </div>
@@ -194,6 +199,7 @@
     </main>
 </div>
 
+<!-- POP-UP POUR LE MAPPING PARTIEL (ALT+CLIC) -->
 <div id="partialPopup" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[2000] flex items-center justify-center hidden opacity-0 transition-opacity duration-150">
     <div class="bg-white rounded-lg shadow-2xl border border-slate-200 w-[420px] overflow-hidden transform scale-95 transition-transform duration-150">
         <div class="bg-slate-900 p-3 flex items-center gap-2 text-white font-black text-[10px] uppercase tracking-wider">
@@ -221,6 +227,7 @@
     </div>
 </div>
 
+<!-- INSPECTEUR DE CELLULE -->
 <div id="inspector" class="fixed hidden z-[1000] w-[720px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-200 scale-95 opacity-0">
     <div id="ins-header" class="bg-slate-900 p-2.5 flex justify-between items-center text-white font-bold text-[10px] uppercase select-none">
         <div class="flex items-center gap-2 pointer-events-none flex-1 min-w-0 mr-4">
@@ -352,13 +359,6 @@
         renderDynamicGrid();
     }
 
-    document.getElementById('gridInput').addEventListener('change', function(e) {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) { processGridWorkbook(event.target.result); };
-        reader.readAsArrayBuffer(file);
-    });
-
     function switchSection() { 
         currentSection = document.getElementById('section').value; 
         renderDynamicGridHeader();
@@ -454,7 +454,12 @@
             occurrenceMap[m.accountId] = (occurrenceMap[m.accountId] || 0) + 1;
         });
 
-        document.getElementById('absRemains').innerText = accounts.filter(a => !usageMap[a.id]).length;
+        // CALCUL DE LA STATISTIQUE DES COMPTES RESTANTS + POURCENTAGE
+        const remainingCount = accounts.filter(a => !usageMap[a.id]).length;
+        document.getElementById('absRemains').innerText = remainingCount;
+        
+        const pct = accounts.length > 0 ? Math.round((remainingCount / accounts.length) * 100) : 0;
+        document.getElementById('pctRemains').innerText = `(${pct}%)`;
 
         displayedAccounts = accounts.filter(acc => {
             const currentTotal = usageMap[acc.id] || 0;
@@ -507,7 +512,6 @@
 
             const textColors = isSelected ? 'text-blue-100' : 'text-slate-500';
 
-            // RECONSTRUCTION DE LA LIGNE (V8.7d) : LARGEUR STRICTE ET INFOBULLE SYSTEME INDESTRUCTIBLE
             return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer transition-colors ${selectionClasses}" onclick="handleAccountClick(event, ${index})">
                 <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-700'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${formatAccountId(acc.id, mask)}</span>
                 <div class="flex-1 min-w-0 pr-16">
@@ -619,7 +623,7 @@
             alert("Rien à sauvegarder pour le moment."); return;
         }
         const stateData = {
-            version: "8.7d",
+            version: "8.8a",
             mask: document.getElementById('maskInput').value,
             accounts: accounts,
             mappings: mappings
@@ -790,7 +794,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.7d.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.8a.csv`; link.click();
     }
 </script>
 </body>

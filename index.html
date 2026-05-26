@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v8.7c</title>
+    <title>Mapping Engine v8.7d</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -43,20 +43,6 @@
         input:checked + .slider:before { transform: translateX(12px); }
 
         .acc-item-selected:hover { background-color: #1e40af !important; }
-
-        /* CORRECTIF CORRECT POUR FLYOVER (V8.7c) */
-        .acc-label-container { 
-            position: relative; flex: 1; min-width: 0; display: flex; align-items: center;
-        }
-        .acc-label-text { 
-            display: block; width: 100%; text-transform: uppercase; font-weight: 500; font-size: 10px; z-index: 10;
-        }
-        /* Déploiement au survol de la ligne */
-        .acc-row:hover .acc-label-text {
-            position: absolute; left: 0; width: auto; min-width: 100%; padding-right: 24px; z-index: 100;
-            overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important;
-            background: inherit; box-shadow: 10px 0 15px rgba(0,0,0,0.15); border-radius: 0 4px 4px 0;
-        }
 
         .help-tooltip { visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s; }
         .help-trigger:hover .help-tooltip { visibility: visible; opacity: 1; }
@@ -143,7 +129,7 @@
                 <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
                 <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
             </div>
-            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.7c</span>
+            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.7d</span>
         </div>
 
         <div class="flex items-center gap-3">
@@ -519,11 +505,15 @@
                 }
             }
 
-            // RECONSTRUCTION DE LA CELLULE AVEC TRONQUAGE FIXÉ & FLYOVER OPÉRATIONNEL
+            const textColors = isSelected ? 'text-blue-100' : 'text-slate-500';
+
+            // RECONSTRUCTION DE LA LIGNE (V8.7d) : LARGEUR STRICTE ET INFOBULLE SYSTEME INDESTRUCTIBLE
             return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer transition-colors ${selectionClasses}" onclick="handleAccountClick(event, ${index})">
                 <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-700'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${formatAccountId(acc.id, mask)}</span>
-                <div class="acc-label-container min-w-0 w-full overflow-hidden">
-                    <span class="acc-label-text truncate ${isSelected ? 'text-blue-100' : 'text-slate-500'}" oncontextmenu="openAccountInspector(event, '${acc.id}')">${acc.label}</span>
+                <div class="flex-1 min-w-0 pr-16">
+                    <span title="${acc.label.toUpperCase()}" class="block max-w-[340px] truncate text-[10px] uppercase font-bold tracking-tight ${textColors}" oncontextmenu="openAccountInspector(event, '${acc.id}')">
+                        ${acc.label}
+                    </span>
                 </div>
                 ${stateBadge}
                 <div class="absolute right-0 top-0 bottom-0 w-1 ${statusColor}"></div>
@@ -629,7 +619,7 @@
             alert("Rien à sauvegarder pour le moment."); return;
         }
         const stateData = {
-            version: "8.7c",
+            version: "8.7d",
             mask: document.getElementById('maskInput').value,
             accounts: accounts,
             mappings: mappings
@@ -800,7 +790,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.7c.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.7d.csv`; link.click();
     }
 </script>
 </body>

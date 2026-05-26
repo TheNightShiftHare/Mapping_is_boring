@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v10.3</title>
+    <title>Mapping Engine v10.4</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -116,7 +116,7 @@
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
                     <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.3</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.4</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
@@ -200,7 +200,7 @@
     </div>
 </div>
 
-<div id="inspector" class="fixed hidden z-[1000] w-[580px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-150 scale-95 opacity-0">
+<div id="inspector" class="fixed hidden z-[1000] w-[540px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-150 scale-95 opacity-0">
     <div id="ins-header" class="bg-slate-900 p-2.5 flex justify-between items-center text-white font-bold text-[10px] uppercase cursor-move select-none">
         <div class="flex items-center gap-2 flex-1 min-w-0 mr-4">
             <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400"></i>
@@ -213,7 +213,7 @@
             <button onclick="closeInspector()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
     </div>
-    <div id="ins-body" class="max-h-[350px] overflow-y-auto custom-scrollbar p-3 bg-white/95 space-y-1.5"></div>
+    <div id="ins-body" class="max-h-[380px] overflow-y-auto custom-scrollbar p-3 bg-white/95 space-y-2"></div>
 </div>
 
 <div id="account-hover-tooltip" class="fixed hidden pointer-events-none z-[5000] bg-white text-slate-900 border border-slate-200 px-3 py-1.5 rounded shadow-xl text-xs font-bold whitespace-nowrap"></div>
@@ -231,7 +231,7 @@
     let brandMapping = {}; 
     let selectedBrand = "ALL";
     let tooltipTimeout = null;
-    let hiddenAccountsCache = new Set(); // Gère la persistance visuelle du mode "Non-mappés"
+    let hiddenAccountsCache = new Set();
 
     function loadAutoGrid() {
         const targetGrid = './GRID_TO_LOAD.xlsx';
@@ -353,7 +353,7 @@
         reader.readAsArrayBuffer(file);
     });
 
-    // REFRESH VISUEL OPTIMISÉ SANS PERTE INSTANTANÉE DES COMPTES MAPPÉS
+    // RENDER COMPLETEMENT SÉCURISÉ POUR LA FLUIDITÉ ET LA NON-SÉLECTION DOUBLE
     function renderAccounts(rebuildCache = false) {
         const list = document.getElementById('accList'), usageMap = {}, occurrenceMap = {};
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
@@ -416,14 +416,14 @@
                 else { sColor = "bg-red-500"; badge = `<span class="absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Trop: +${cur - 100}</span>`; }
             }
             
+            // REMISE A PLAT DU CONTRASTE TEXTE (BLANC SUR BLEU SÉLECTIONNÉ)
             html += `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}" 
-                data-accid="${strId}"
                 onclick="handleAccountClick(event, '${strId}')"
                 oncontextmenu="openAccountInspector(event, '${strId}')"
                 onmouseenter="startAccountTooltip(event, '${strId}')"
                 onmouseleave="clearAccountTooltip()">
-                <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2">${formatAccountId(strId, mask)}</span>
-                <div class="flex-1 min-w-0 pr-16"><span class="block max-w-[340px] truncate text-[10px] uppercase font-bold ${isSel ? 'text-blue-100' : 'text-slate-500'}">${acc.label}</span></div>
+                <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 ${isSel ? 'text-white' : 'text-slate-800'}">${formatAccountId(strId, mask)}</span>
+                <div class="flex-1 min-w-0 pr-16"><span class="block max-w-[340px] truncate text-[10px] uppercase font-bold ${isSel ? 'text-white' : 'text-slate-500'}">${acc.label}</span></div>
                 ${badge}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
             </div>`;
         }
@@ -436,7 +436,7 @@
         if (pos < id.length) res.push(id.substring(pos)); return res.join('.');
     }
 
-    // SÉLECTION CIBLÉE SUR LES STRIDS DIRECTS POUR SUPPRIMER LE COMPORTEMENT DE DOUBLE CLIC
+    // RETOUR A LA SÉLECTION INITIALE PAR RENDER STRICT (ÉLIMINE LE DOUBLE CLIC ET LE FREEZE)
     function handleAccountClick(e, targetId) {
         targetId = String(targetId);
         const idxInDisplayed = displayedAccounts.findIndex(a => String(a.id) === targetId);
@@ -461,23 +461,12 @@
             else { selectedIds = [targetId]; }
         }
         lastClickedId = targetId;
-        
-        // Rafraîchissement ciblé des classes CSS pour éliminer la latence/freeze
-        const rows = document.querySelectorAll('#accList .acc-row');
-        rows.forEach(row => {
-            const rowId = row.getAttribute('data-accid');
-            if (selectedIds.includes(rowId)) {
-                row.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 bg-blue-600 text-white border-l-blue-900 acc-item-selected";
-            } else {
-                row.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 border-l-transparent text-slate-700 hover:bg-slate-50";
-            }
-        });
+        renderAccounts(false); // Pas de re-calcul de cache lourd, juste rafraîchissement graphique fluide
     }
 
     function startAccountTooltip(e, targetId) {
         clearAccountTooltip();
         const acc = accounts.find(a => String(a.id) === String(targetId)); if (!acc) return;
-        
         tooltipTimeout = setTimeout(() => {
             const tooltip = document.getElementById('account-hover-tooltip');
             tooltip.innerText = acc.label.toUpperCase();
@@ -549,7 +538,6 @@
         event.preventDefault(); const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
         ins.dataset.mode = "CELL"; ins.dataset.id = cid;
         document.getElementById('ins-title').innerText = `CELLULE ${cid} | ${info.rowId} - ${info.rowLabel}`;
-        
         document.getElementById('ins-clear-btn').classList.remove('hidden');
         refreshInspector(); showInspector(event.pageX, event.pageY);
     }
@@ -560,11 +548,11 @@
         const ins = document.getElementById('inspector');
         ins.dataset.mode = "ACCOUNT"; ins.dataset.id = strId;
         document.getElementById('ins-title').innerText = `COMPTE ${strId} | DESTINATIONS`;
-        
         document.getElementById('ins-clear-btn').classList.add('hidden');
         refreshInspector(); showInspector(event.pageX, event.pageY);
     }
     
+    // STRUCTURE RETRAVAILLÉE : COMPTE EN HAUT ET LIBELLÉ EN DESSOUS POUR UN RENDU NET
     function refreshInspector() {
         const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
         
@@ -573,14 +561,14 @@
             body.innerHTML = list.map(m => {
                 const acc = accounts.find(a => String(a.id) === String(m.accountId));
                 const label = acc ? acc.label : "Libellé inconnu";
-                return `<div class="flex items-center justify-between p-2 bg-white border rounded shadow-sm text-xs gap-3">
-                    <div class="flex items-center gap-3 min-w-0 flex-1">
-                        <span class="font-mono font-bold text-blue-700 shrink-0 w-28">${formatAccountId(m.accountId, mask)}</span>
-                        <span class="font-bold text-slate-600 uppercase text-[10px] truncate flex-1">${label}</span>
+                return `<div class="flex items-center justify-between p-2 bg-white border rounded shadow-sm text-xs gap-4">
+                    <div class="flex flex-col min-w-0 flex-1 leading-normal">
+                        <span class="font-mono font-bold text-blue-700 text-sm">${formatAccountId(m.accountId, mask)}</span>
+                        <span class="font-bold text-slate-500 uppercase text-[10px] truncate mt-0.5">${label}</span>
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
-                        <span class="font-black w-8 text-right ${m.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${m.value > 0 ? '+' : ''}${m.value}</span>
-                        <button onclick="removeMapping('${id}','${m.accountId}')" class="text-red-500 hover:text-red-700 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        <span class="font-black w-8 text-right text-sm ${m.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${m.value > 0 ? '+' : ''}${m.value}</span>
+                        <button onclick="removeMapping('${id}','${m.accountId}')" class="text-red-500 hover:text-red-700 transition-colors p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
                 </div>`;
             }).join(list.length ? '' : '<div class="p-4 text-xs text-slate-400 text-center italic">Aucun compte adressé sur cette cellule.</div>');
@@ -593,16 +581,15 @@
             }
             body.innerHTML = foundDestinations.map(dest => {
                 const info = cellInfoMap[dest.cellId];
-                // RECUPERATION DU COMPTE ET DU VRAI LIBELLÉ DE LA GRILLE DE DESTINATION
                 const gridContext = info ? `${info.section} -> Ligne [${info.rowId}] : ${info.rowLabel.toUpperCase()}` : "Cellule isolée";
-                return `<div class="flex items-center justify-between p-2 bg-white border rounded shadow-sm text-xs gap-3">
-                    <div class="flex flex-col min-w-0 flex-1">
-                        <span class="font-black text-blue-700 text-[11px]">CELLULE ${dest.cellId}</span>
-                        <span class="text-[9px] font-bold text-slate-500 uppercase truncate">${gridContext}</span>
+                return `<div class="flex items-center justify-between p-2 bg-white border rounded shadow-sm text-xs gap-4">
+                    <div class="flex flex-col min-w-0 flex-1 leading-normal">
+                        <span class="font-black text-blue-700 text-sm">CELLULE ${dest.cellId}</span>
+                        <span class="text-[10px] font-bold text-slate-500 uppercase truncate mt-0.5">${gridContext}</span>
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
-                        <span class="font-black w-8 text-right ${dest.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${dest.value > 0 ? '+' : ''}${dest.value}</span>
-                        <button onclick="removeMapping('${dest.cellId}','${id}'); refreshInspector();" class="text-red-500 hover:text-red-700 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        <span class="font-black w-8 text-right text-sm ${dest.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${dest.value > 0 ? '+' : ''}${dest.value}</span>
+                        <button onclick="removeMapping('${dest.cellId}','${id}'); refreshInspector();" class="text-red-500 hover:text-red-700 transition-colors p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
                 </div>`;
             }).join(foundDestinations.length ? '' : '<div class="p-4 text-xs text-slate-400 text-center italic">Ce compte n\'est mappé nulle part.</div>');
@@ -683,12 +670,23 @@
         grid.innerHTML = html + `</tbody>`; lucide.createIcons();
     }
 
+    // RESTAURATION STRICTE DU FORMAT DATE_HEURE_MINUTES ATTENDU POUR LES EXPORTS
+    function getFormattedTimestamp() { 
+        const now = new Date(); 
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        return `${yyyy}${mm}${dd}_${hh}${min}`; 
+    }
+
     function exportStateJSON() {
         if (!accounts.length && !Object.keys(mappings).length) return;
-        const stateData = { version: "10.3", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
+        const stateData = { version: "10.4", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
         const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = `WIP_Mapping_backup_${getFormattedTimestamp()}.json`; link.click();
+        link.download = `Backup_WIP_Engine_${getFormattedTimestamp()}.json`; link.click();
     }
 
     function importStateJSON(event) {
@@ -709,8 +707,6 @@
         };
         reader.readAsText(file);
     }
-
-    function getFormattedTimestamp() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
     
     function exportMappingCSV() {
         let rows = [];
@@ -719,7 +715,7 @@
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = `Adressage_${getFormattedTimestamp()}.csv`; link.click();
+        link.download = `Livrable_Mapping_${getFormattedTimestamp()}.csv`; link.click();
     }
 
     function importAuditCSV(event) {

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v10.6</title>
+    <title>Mapping Engine v10.7</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -118,7 +118,7 @@
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
                     <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.6</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.7</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
@@ -355,7 +355,6 @@
         reader.readAsArrayBuffer(file);
     });
 
-    // ARCHITECTURE V8.7 PURE : GENERATION DE VERITABLES NOEUDS DOM ET SYNCHRONISATION DIRECTE
     function renderAccounts(rebuildCache = false) {
         const list = document.getElementById('accList');
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
@@ -406,7 +405,6 @@
 
         document.getElementById('filterCount').innerText = displayedAccounts.length;
         
-        // Vider proprement la liste avant reconstruction complète des éléments purs DOM
         list.innerHTML = "";
         
         displayedAccounts.forEach(acc => {
@@ -430,9 +428,8 @@
 
             const row = document.createElement('div');
             row.id = `acc-row-${strId}`;
-            row.className = `acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none transition-colors duration-75`;
+            row.className = `acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none`;
             
-            // Appliquer l'état initial des classes CSS de sélection v8.7
             if (isSel) {
                 row.classList.add('bg-blue-600', 'text-white', 'border-l-blue-900', 'acc-item-selected');
             } else {
@@ -445,10 +442,9 @@
                 ${badgeHTML}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
             `;
 
-            // Attachement des écouteurs d'événements directement au nœud mémoire (Zéro perte de contexte, zéro double clic)
             row.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
+                e.stopImmediatePropagation(); // Verrou de sécurité absolu contre les événements fantômes
                 executeAccountSelection(e, strId);
             });
 
@@ -465,14 +461,13 @@
         });
     }
 
-    // GESTIONNAIRE DE SELECTION SYNCHRONE DIRECT (SANS RE-RENDER GLOBAL INNERHTML)
+    // REFONTE INTEGRALE DU CYCLE DE RAFFRAICHISSEMENT DES CLASSES (ZERO PERSISTANCE)
     function executeAccountSelection(e, targetId) {
         targetId = String(targetId);
         const idxInDisplayed = displayedAccounts.findIndex(a => String(a.id) === targetId);
         if (idxInDisplayed === -1) return;
 
-        let previousSelection = [...selectedIds];
-
+        // 1. Calcul du nouvel état de sélection purement en mémoire
         if (e.shiftKey && lastClickedId !== null) {
             const startIdx = displayedAccounts.findIndex(a => String(a.id) === lastClickedId);
             if (startIdx !== -1) {
@@ -488,6 +483,7 @@
                 selectedIds.push(targetId);
             }
         } else {
+            // Clic simple : Si déjà sélectionné de manière isolée on désélectionne, sinon on écrase TOUT par l'unique cible
             if (selectedIds.length === 1 && selectedIds[0] === targetId) { 
                 selectedIds = []; 
             } else { 
@@ -496,24 +492,23 @@
         }
         lastClickedId = targetId;
 
-        // MISE A JOUR DES CLASSES CSS EN DIRECT (Methode v8.7 pure, pas d'effacement de DOM)
-        previousSelection.forEach(id => {
-            const el = document.getElementById(`acc-row-${id}`);
-            if (el) {
-                el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none border-l-transparent text-slate-700 hover:bg-slate-50";
-                const texts = el.querySelectorAll('span');
-                if(texts[0]) texts[0].className = "font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 text-slate-800";
-                if(texts[1]) texts[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-slate-500";
-            }
+        // 2. NETTOYAGE ABSOLU DE LA LISTE VISUELLE (Supprime mathématiquement le bug du double reflet)
+        const allRows = document.getElementById('accList').querySelectorAll('.acc-row');
+        allRows.forEach(el => {
+            el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none border-l-transparent text-slate-700 hover:bg-slate-50";
+            const spans = el.querySelectorAll('span');
+            if (spans[0]) spans[0].className = "font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 text-slate-800";
+            if (spans[1]) spans[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-slate-500";
         });
 
+        // 3. APPLICATION EXCLUSIVE DES STYLES ACTIFS
         selectedIds.forEach(id => {
             const el = document.getElementById(`acc-row-${id}`);
             if (el) {
                 el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none bg-blue-600 text-white border-l-blue-900 acc-item-selected";
-                const texts = el.querySelectorAll('span');
-                if(texts[0]) texts[0].className = "font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 text-white";
-                if(texts[1]) texts[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-white";
+                const spans = el.querySelectorAll('span');
+                if (spans[0]) spans[0].className = "font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 text-white";
+                if (spans[1]) spans[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-white";
             }
         });
     }
@@ -744,7 +739,7 @@
 
     function exportStateJSON() {
         if (!accounts.length && !Object.keys(mappings).length) return;
-        const stateData = { version: "10.6", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
+        const stateData = { version: "10.7", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
         const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
         link.download = `Backup_WIP_Engine_${getFormattedTimestamp()}.json`; link.click();

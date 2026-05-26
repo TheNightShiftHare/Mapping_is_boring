@@ -1,8 +1,9 @@
+<!-- MAPPING ENGINE VERSION : v8.9 (Export Naming Rules & UI Select Refinement) -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v8.8b</title>
+    <title>Mapping Engine v8.9</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -53,12 +54,15 @@
 <div class="flex flex-col h-full">
     <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-[100]">
         
+        <!-- BLOC GAUCHE : ACTIONS DE LA BALANCE -->
         <div class="flex items-center gap-3">
+            <!-- CHARGER BALANCE -->
             <input type="file" id="balanceInput" accept=".csv, .xlsx, .xls" class="hidden">
             <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold shadow transition-all active:scale-95 shrink-0">
                 <i data-lucide="file-up" class="w-3.5 h-3.5"></i> Charger Balance
             </button>
             
+            <!-- STATS, MASQUE ET FILTRE NON-MAPPÉS -->
             <div class="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1 shadow-inner shrink-0">
                 <div class="flex flex-col">
                     <span class="text-[8px] font-black text-blue-400 uppercase leading-none">Comptes</span>
@@ -102,8 +106,10 @@
             </div>
         </div>
 
+        <!-- BLOC DROITE : PERSISTANCE, MARQUE, EXPORT ET SECTIONS -->
         <div class="flex items-center gap-4 ml-auto">
             
+            <!-- BLOC SESSIONS & AUDIT REPOSITIONNÉ À DROITE -->
             <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1 shadow-sm shrink-0">
                 <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight px-1">Sauvegarde WIP</span>
                 
@@ -124,19 +130,22 @@
                 </button>
             </div>
 
+            <!-- COMMERCE / MARQUE -->
             <div class="flex items-center gap-2 border-l border-slate-200 pl-4 h-full select-none shrink-0">
                 <div class="flex flex-col items-end">
                     <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
                     <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.8b</span>
+                <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.9</span>
             </div>
 
+            <!-- BOUTON VERT D'EXPORT DÉFINITIF -->
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Mapping
             </button>
 
-            <select id="section" class="bg-slate-100 text-slate-700 rounded px-2.5 py-1.5 text-[10px] font-bold outline-none border border-slate-300 hover:bg-slate-200 transition-colors shrink-0" onchange="switchSection()">
+            <!-- 3// SÉLECTEUR DE GRILLE AGRANDI (TEXT-XS POUR PLUS DE LISIBILITÉ) -->
+            <select id="section" class="bg-slate-100 text-slate-700 rounded px-3 py-1.5 text-xs font-bold outline-none border border-slate-300 hover:bg-slate-200 cursor-pointer transition-colors shrink-0" onchange="switchSection()">
                 <option value="NONE">CHARGEMENT GRILLE...</option>
             </select>
         </div>
@@ -182,7 +191,8 @@
                     <table class="grid-fixed">
                         <thead>
                             <tr id="headerRow">
-                                </tr>
+                                <!-- Rempli dynamiquement -->
+                            </tr>
                         </thead>
                     </table>
                 </div>
@@ -194,6 +204,7 @@
     </main>
 </div>
 
+<!-- POP-UP POUR LE MAPPING PARTIEL (ALT+CLIC) -->
 <div id="partialPopup" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[2000] flex items-center justify-center hidden opacity-0 transition-opacity duration-150">
     <div class="bg-white rounded-lg shadow-2xl border border-slate-200 w-[420px] overflow-hidden transform scale-95 transition-transform duration-150">
         <div class="bg-slate-900 p-3 flex items-center gap-2 text-white font-black text-[10px] uppercase tracking-wider">
@@ -221,6 +232,7 @@
     </div>
 </div>
 
+<!-- INSPECTEUR DE CELLULE -->
 <div id="inspector" class="fixed hidden z-[1000] w-[720px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-200 scale-95 opacity-0">
     <div id="ins-header" class="bg-slate-900 p-2.5 flex justify-between items-center text-white font-bold text-[10px] uppercase select-none">
         <div class="flex items-center gap-2 pointer-events-none flex-1 min-w-0 mr-4">
@@ -274,6 +286,29 @@
         });
         document.addEventListener('mousemove', (e) => { if (isDragging) { ins.style.left = (e.clientX - offsetH) + 'px'; ins.style.top = (e.clientY - offsetV) + 'px'; } });
         document.addEventListener('mouseup', () => { isDragging = false; ins.classList.add('transition-all'); });
+    }
+
+    // UTILS : GÉNÉRATEUR DE TIMESTAMP (AAAA-MM-JJ_HHhMM)
+    function getFormattedTimestamp() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}_${hours}h${minutes}`;
+    }
+
+    // UTILS : PETIT COMPTEUR DE COMPTES UNIQUES MAPPÉS
+    function getUniqueMappedAccountsCount() {
+        const uniqueIds = new Set();
+        Object.values(mappings).flat().forEach(m => uniqueIds.add(m.accountId));
+        return uniqueIds.size;
+    }
+
+    // UTILS : PETIT HASH ALÉATOIRE DISCRET POUR L'OPTION B
+    function getRandomToken() {
+        return Math.random().toString(16).substring(2, 6);
     }
 
     function initPopupKeyboardShortcuts() {
@@ -610,20 +645,26 @@
         triggerSuperFlash(cid); selectedIds = []; closePartialPopup(); renderAccounts(); renderDynamicGrid();
     }
 
+    // 1// MODIFICATION DE LA SAUVEGARDE JSON (WIP NAMING CONVENTION)
     function exportStateJSON() {
         if (!accounts.length && !Object.keys(mappings).length) {
             alert("Rien à sauvegarder pour le moment."); return;
         }
         const stateData = {
-            version: "8.8b",
+            version: "8.9",
             mask: document.getElementById('maskInput').value,
             accounts: accounts,
             mappings: mappings
         };
+
+        const timestamp = getFormattedTimestamp();
+        const mappedCount = getUniqueMappedAccountsCount();
+        const totalCount = accounts.length;
+
         const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `session_backup_${new Date().toISOString().slice(0,10)}.json`;
+        link.download = `WIP_Mapping_backup_${timestamp}_${mappedCount}_${totalCount}.json`;
         link.click();
     }
 
@@ -777,6 +818,7 @@
     function closeInspector() { const ins = document.getElementById('inspector'); ins.classList.remove('scale-100', 'opacity-100'); setTimeout(() => ins.classList.add('hidden'), 200); }
     function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
 
+    // 2// MODIFICATION DE L'EXPORT CSV (OPTION B NAMING)
     function exportMappingCSV() {
         let rows = [];
         for (const [cid, list] of Object.entries(mappings)) {
@@ -785,8 +827,16 @@
                 rows.push(`${m.accountId};${acc ? acc.label : ""};${cid};${m.value}`); 
             });
         }
+        
+        const timestamp = getFormattedTimestamp();
+        const lineCount = rows.length; // Nombre total de lignes (comptes mappés)
+        const token = getRandomToken();
+
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.8b.csv`; link.click();
+        const link = document.createElement("a"); 
+        link.href = URL.createObjectURL(blob); 
+        link.download = `Adressage_${timestamp}_${lineCount}_User-${token}.csv`; 
+        link.click();
     }
 </script>
 </body>

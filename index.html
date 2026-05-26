@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v8.6c</title>
+    <title>Mapping Engine v8.7 (Shrink)</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -29,10 +29,11 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .inspector-blur { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.98); }
         
+        /* RECALIBRAGE DES COLONNES DE LA GRILLE (V8.7) */
         .grid-fixed { table-layout: fixed; width: 100%; border-spacing: 0; }
-        .col-code { width: 60px; min-width: 60px; }
-        .col-label { width: 230px; min-width: 230px; }
-        .col-data { width: 105px; min-width: 105px; }
+        .col-code { width: 40px; min-width: 40px; }
+        .col-label { width: 200px; min-width: 200px; }
+        .col-data { width: 80px; min-width: 80px; }
 
         .switch { position: relative; display: inline-block; width: 28px; height: 16px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -139,7 +140,7 @@
                 <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
                 <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
             </div>
-            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.6c</span>
+            <span class="text-xs font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1 tracking-tight">v8.7</span>
         </div>
 
         <div class="flex items-center gap-3">
@@ -153,7 +154,7 @@
     </header>
 
     <main class="flex flex-1 overflow-hidden">
-        <aside class="w-[380px] bg-white border-r border-slate-200 flex flex-col shadow-lg z-20">
+        <aside class="w-[605px] bg-white border-r border-slate-200 flex flex-col shadow-lg z-20 shrink-0">
             <div class="p-3 border-b border-slate-100 flex flex-col gap-2 bg-slate-50/50">
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
@@ -313,7 +314,6 @@
         return result.join('.');
     }
 
-    /* EVOLUTION CRUCIALE v8.6c : Indexation globale et complète de TOUTES les cellules de TOUTES les grilles dès le chargement */
     function processGridWorkbook(buffer) {
         const data = new Uint8Array(buffer);
         const workbook = XLSX.read(data, {type: 'array'});
@@ -333,7 +333,6 @@
                 options += `<option value="${name}">${name}</option>`;
                 if (idx === 0) currentSection = name;
 
-                // Indexation globale immédiate (remplace le traitement localisé au render d'onglet)
                 const dataRows = sheetData.slice(2);
                 dataRows.forEach((row) => {
                     const code = row[0] ? String(row[0]).trim() : "", label = row[1] || "", hasCode = code !== "";
@@ -345,7 +344,6 @@
                             const isDecimalInversion = (val % 1 >= 0.85 && val % 1 <= 0.95);
                             const cid = isDecimalInversion ? Math.floor(val) : Math.abs(val);
                             
-                            // On stocke sans écraser si déjà présent (clé unique par ID de cellule)
                             cellInfoMap[cid] = { 
                                 rowId: code, 
                                 rowLabel: label, 
@@ -627,7 +625,7 @@
             alert("Rien à sauvegarder pour le moment."); return;
         }
         const stateData = {
-            version: "8.6c",
+            version: "8.7",
             mask: document.getElementById('maskInput').value,
             accounts: accounts,
             mappings: mappings
@@ -798,7 +796,7 @@
             });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.6c.csv`; link.click();
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `mapping_v8.7.csv`; link.click();
     }
 </script>
 </body>

@@ -1,4 +1,3 @@
-<!-- MAPPING ENGINE VERSION : v10.0-TEST (Dynamic Brand Filtering & Context Persistence) -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -54,7 +53,6 @@
 <div class="flex flex-col h-full">
     <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-[100]">
         
-        <!-- BLOC GAUCHE : ACTIONS DE LA BALANCE -->
         <div class="flex items-center gap-3">
             <input type="file" id="balanceInput" accept=".csv, .xlsx, .xls" class="hidden">
             <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold shadow transition-all active:scale-95 shrink-0">
@@ -97,7 +95,6 @@
             </div>
         </div>
 
-        <!-- BLOC DROITE : PERSISTANCE, MARQUE, EXPORT ET SÉLECTEURS EN CASCADE -->
         <div class="flex items-center gap-4 ml-auto">
             
             <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1 shadow-sm shrink-0">
@@ -119,29 +116,26 @@
                 </button>
             </div>
 
-            <div class="flex items-center gap-2 border-l border-slate-200 pl-4 h-full select-none shrink-0">
+            <div class="flex items-center gap-3 border-l border-slate-200 pl-4 h-full select-none shrink-0">
                 <div class="flex flex-col items-end">
-                    <span class="font-black tracking-tight text-slate-800 text-xs italic uppercase">Mapping Is Boring</span>
-                    <span class="text-[9px] font-medium text-slate-400 tracking-tight leading-none mt-0.5">© Eric MUNSCHI</span>
+                    <span class="font-black text-[13px] tracking-[0.18em] text-slate-900 uppercase leading-none font-mono">MAPPING IS BORING</span>
+                    <span class="text-[8px] font-bold text-slate-400 tracking-[0.12em] uppercase mt-1 leading-none">BY ERIC MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.0-TEST</span>
+                <span class="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded shadow-sm tracking-tight">v10.0-TEST</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Mapping
             </button>
 
-            <!-- ZONE DES SÉLECTEURS FILTRÉS -->
             <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-300 rounded p-1 shadow-inner">
-                <!-- SÉLECTEUR DE MARQUE -->
-                <select id="brandSelect" class="bg-white text-slate-800 rounded px-2.5 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors shrink-0" onchange="handleBrandChange()">
-                    <option value="ALL">TOUTES LES MARQUES</option>
+                <select id="brandSelect" class="bg-white text-slate-800 rounded px-2 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors shrink-0 max-w-[120px]" onchange="handleBrandChange()">
+                    <option value="ALL">TOUTES</option>
                 </select>
                 
                 <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400"></i>
 
-                <!-- SÉLECTEUR DE GRILLE -->
-                <select id="section" class="bg-white text-blue-700 rounded px-2.5 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors shrink-0" onchange="switchSection()">
+                <select id="section" class="bg-blue-600 text-white rounded px-2.5 py-1 text-xs font-black outline-none border border-blue-700 hover:bg-blue-700 cursor-pointer transition-colors shrink-0" onchange="switchSection()">
                     <option value="NONE">CHARGEMENT GRILLE...</option>
                 </select>
             </div>
@@ -191,7 +185,6 @@
     </main>
 </div>
 
-<!-- LE RESTE DE L'INTERFACE COMPACTE (POPUP + INSPECTEUR) RESTE INTACT -->
 <div id="partialPopup" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[2000] flex items-center justify-center hidden opacity-0 transition-opacity duration-150">
     <div class="bg-white rounded-lg shadow-2xl border border-slate-200 w-[420px] overflow-hidden transform scale-95 transition-transform duration-150">
         <div class="bg-slate-900 p-3 flex items-center gap-2 text-white font-black text-[10px] uppercase">
@@ -238,8 +231,7 @@
     let columnConfigs = {}; 
     let activePopupContext = null;
 
-    // STRUCTURE RESTRUCTURÉE POUR LE FILTRAGE DES MARQUES
-    let brandMapping = {}; // Format: { "PEUGEOT": ["Grille1", "Grille2"], ... }
+    let brandMapping = {}; 
     let selectedBrand = "ALL";
 
     function loadAutoGrid() {
@@ -258,10 +250,9 @@
         const workbook = XLSX.read(data, {type: 'array'});
         sectionsData = {}; columnConfigs = {}; cellInfoMap = {}; brandMapping = {};
 
-        // 1. ANALYSE DE LA FEUILLE DE CONFIGURATION "PARAMETRES"
         if (workbook.SheetNames.includes("PARAMETRES")) {
             const paramSheet = workbook.Sheets["PARAMETRES"];
-            const paramRows = XLSX.utils.sheet_to_json(paramSheet); // Cherche les colonnes MARQUE et GRILLE
+            const paramRows = XLSX.utils.sheet_to_json(paramSheet);
             
             paramRows.forEach(row => {
                 const b = row["MARQUE"] ? String(row["MARQUE"]).trim().toUpperCase() : null;
@@ -273,9 +264,8 @@
             });
         }
 
-        // 2. PARCOURS DES ONGLETS RESTE DES GRILLES
-        workbook.SheetNames.forEach((name, idx) => {
-            if (name === "PARAMETRES") return; // On ignore l'onglet système pour le mapping
+        workbook.SheetNames.forEach((name) => {
+            if (name === "PARAMETRES") return;
 
             const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 502); 
             if (sheetData.length > 1) {
@@ -312,12 +302,11 @@
         updateSectionSelector();
     }
 
-    // CONSTRUIRE LE MENU DÉROULANT DES MARQUES
     function buildBrandSelector() {
         const brandSelect = document.getElementById('brandSelect');
         const brands = Object.keys(brandMapping).sort();
         
-        let html = `<option value="ALL">TOUTES LES MARQUES (${Object.keys(sectionsData).length})</option>`;
+        let html = `<option value="ALL">TOUTES</option>`;
         brands.forEach(b => {
             html += `<option value="${b}">${b}</option>`;
         });
@@ -325,7 +314,6 @@
         brandSelect.value = selectedBrand;
     }
 
-    // METTRE À JOUR LE SÉLECTEUR DE GRILLE SELON LA MARQUE CHOISIE
     function updateSectionSelector(targetSectionToPreserve = null) {
         const sectionSelect = document.getElementById('section');
         const allAvailableSheets = Object.keys(sectionsData);
@@ -347,11 +335,10 @@
         });
         sectionSelect.innerHTML = html;
 
-        // Tente de conserver la section en cours, sinon sélectionne la première disponible
         if (targetSectionToPreserve && filteredSheets.includes(targetSectionToPreserve)) {
             currentSection = targetSectionToPreserve;
         } else if (filteredSheets.includes(currentSection)) {
-            // Reste sur la section actuelle si elle fait partie du filtre
+            // Reste sur la section actuelle
         } else {
             currentSection = filteredSheets[0];
         }
@@ -366,13 +353,14 @@
         updateSectionSelector();
     }
 
-    function switchSection() { 
-        currentSection = document.getElementById('section').value; 
-        renderDynamicGridHeader();
-        renderDynamicGrid(); 
+    if (typeof switchSection === 'undefined') {
+        window.switchSection = function() {
+            currentSection = document.getElementById('section').value; 
+            renderDynamicGridHeader();
+            renderDynamicGrid(); 
+        }
     }
 
-    // PERSISTANCE DU WIP ÉTENDUE AVEC LE CONTEXTE MARQUE ET GRILLE
     function exportStateJSON() {
         if (!accounts.length && !Object.keys(mappings).length) {
             alert("Rien à sauvegarder."); return;
@@ -380,8 +368,8 @@
         const stateData = {
             version: "10.0",
             mask: document.getElementById('maskInput').value,
-            selectedBrand: selectedBrand,   // Sauvegarde de la marque
-            currentSection: currentSection, // Sauvegarde de l'onglet actif
+            selectedBrand: selectedBrand,
+            currentSection: currentSection,
             accounts: accounts,
             mappings: mappings
         };
@@ -405,7 +393,6 @@
                 document.getElementById('maskInput').value = stateData.mask || "";
                 document.getElementById('totalAcc').innerText = accounts.length;
                 
-                // Restauration de la marque et de la section
                 if (stateData.selectedBrand) selectedBrand = stateData.selectedBrand;
                 if (stateData.currentSection) currentSection = stateData.currentSection;
                 
@@ -422,7 +409,6 @@
         reader.readAsText(file);
     }
 
-    // TOUT LE RESTE DES FONCTIONS DE RENDU ET DE MAPPING (FORMATAGE, CLICS, EXPORTS CSV, ETC.) RESTE IDENTIQUE
     function getFormattedTimestamp() {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
@@ -595,7 +581,7 @@
         if (isNaN(v) || v === 0 || v < -100 || v > 100) return;
         if (!mappings[activePopupContext.cid]) mappings[activePopupContext.cid] = [];
         activePopupContext.accountIds.forEach(id => { if (!mappings[activePopupContext.cid].some(m => m.accountId === id)) mappings[activePopupContext.cid].push({ accountId: id, value: v }); });
-        triggerSuperFlash(activePopupContext.cid); selectedIds = []; LacePopupContext = null; closePartialPopup(); renderAccounts(); renderDynamicGrid();
+        triggerSuperFlash(activePopupContext.cid); selectedIds = []; closePartialPopup(); renderAccounts(); renderDynamicGrid();
     }
 
     function openCellInspector(event, cid) {

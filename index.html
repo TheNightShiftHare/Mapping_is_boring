@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v10.4</title>
+    <title>Mapping Engine v10.5</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -44,9 +44,12 @@
         .acc-item-selected:hover { background-color: #1e40af !important; }
         .help-tooltip { visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s; }
         .help-trigger:hover .help-tooltip { visibility: visible; opacity: 1; }
+        
+        /* Protection absolue contre la sélection sauvage de texte au clic */
+        .select-none { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
     </style>
 </head>
-<body class="bg-slate-100 h-screen overflow-hidden font-sans text-slate-800">
+<body class="bg-slate-100 h-screen overflow-hidden font-sans text-slate-800 select-none">
 
 <div class="flex flex-col h-full">
     <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-[100]">
@@ -116,7 +119,7 @@
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
                     <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.4</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.5</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
@@ -156,7 +159,7 @@
                     <span id="filterCount" class="text-[10px] font-bold text-blue-600 min-w-[25px] text-right">0</span>
                 </div>
             </div>
-            <div id="accList" class="flex-1 overflow-y-auto custom-scrollbar select-none divide-y divide-slate-50 bg-white"></div>
+            <div id="accList" class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50 bg-white"></div>
         </aside>
 
         <section id="grid-area" class="flex-1 flex flex-col p-6 bg-slate-50 overflow-hidden">
@@ -353,7 +356,6 @@
         reader.readAsArrayBuffer(file);
     });
 
-    // RENDER COMPLETEMENT SÉCURISÉ POUR LA FLUIDITÉ ET LA NON-SÉLECTION DOUBLE
     function renderAccounts(rebuildCache = false) {
         const list = document.getElementById('accList'), usageMap = {}, occurrenceMap = {};
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
@@ -416,8 +418,7 @@
                 else { sColor = "bg-red-500"; badge = `<span class="absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Trop: +${cur - 100}</span>`; }
             }
             
-            // REMISE A PLAT DU CONTRASTE TEXTE (BLANC SUR BLEU SÉLECTIONNÉ)
-            html += `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}" 
+            html += `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}" 
                 onclick="handleAccountClick(event, '${strId}')"
                 oncontextmenu="openAccountInspector(event, '${strId}')"
                 onmouseenter="startAccountTooltip(event, '${strId}')"
@@ -436,8 +437,10 @@
         if (pos < id.length) res.push(id.substring(pos)); return res.join('.');
     }
 
-    // RETOUR A LA SÉLECTION INITIALE PAR RENDER STRICT (ÉLIMINE LE DOUBLE CLIC ET LE FREEZE)
+    // VERROUILLAGE STRICT CONTRE LE PARASITAGE ET LE DOUBLE CLIC SIMULTANÉ
     function handleAccountClick(e, targetId) {
+        if (e) { e.preventDefault(); e.stopPropagation(); } // Stop direct de toute résonance
+        
         targetId = String(targetId);
         const idxInDisplayed = displayedAccounts.findIndex(a => String(a.id) === targetId);
         if (idxInDisplayed === -1) return;
@@ -457,11 +460,14 @@
                 selectedIds.push(targetId);
             }
         } else {
-            if (selectedIds.length === 1 && selectedIds[0] === targetId) { selectedIds = []; } 
-            else { selectedIds = [targetId]; }
+            if (selectedIds.length === 1 && selectedIds[0] === targetId) { 
+                selectedIds = []; 
+            } else { 
+                selectedIds = [targetId]; 
+            }
         }
         lastClickedId = targetId;
-        renderAccounts(false); // Pas de re-calcul de cache lourd, juste rafraîchissement graphique fluide
+        renderAccounts(false);
     }
 
     function startAccountTooltip(e, targetId) {
@@ -482,12 +488,13 @@
     }
 
     function handleCellClick(e, cid) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         if (!selectedIds.length) return; const info = cellInfoMap[cid]; if (!info) return;
         let baseDir = columnConfigs[info.section][info.colIndex].direction;
         if (info.invertSens) baseDir *= -1;
         
         if (e.altKey) { 
-            e.preventDefault(); openPartialPopup(cid, info, baseDir); 
+            openPartialPopup(cid, info, baseDir); 
         } else {
             if (!mappings[cid]) mappings[cid] = [];
             selectedIds.forEach(id => { 
@@ -527,7 +534,7 @@
         if (!mappings[activePopupContext.cid]) mappings[activePopupContext.cid] = [];
         activePopupContext.accountIds.forEach(id => { 
             const strId = String(id);
-            if (!mappings[activePopupContext.cid].some(m => m.accountId === strId)) {
+            if (!activePopupContext.accountIds.some(m => m.accountId === strId)) {
                 mappings[activePopupContext.cid].push({ accountId: strId, value: v }); 
             } 
         });
@@ -535,24 +542,24 @@
     }
 
     function openCellInspector(event, cid) {
-        event.preventDefault(); const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
+        event.preventDefault(); event.stopPropagation();
+        const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
         ins.dataset.mode = "CELL"; ins.dataset.id = cid;
         document.getElementById('ins-title').innerText = `CELLULE ${cid} | ${info.rowId} - ${info.rowLabel}`;
         document.getElementById('ins-clear-btn').classList.remove('hidden');
-        refreshInspector(); showInspector(event.pageX, event.pageY);
+        refreshInspector(); showInspector(event.clientX, event.clientY);
     }
 
     function openAccountInspector(event, targetId) {
-        event.preventDefault();
+        event.preventDefault(); event.stopPropagation();
         const strId = String(targetId);
         const ins = document.getElementById('inspector');
         ins.dataset.mode = "ACCOUNT"; ins.dataset.id = strId;
         document.getElementById('ins-title').innerText = `COMPTE ${strId} | DESTINATIONS`;
         document.getElementById('ins-clear-btn').classList.add('hidden');
-        refreshInspector(); showInspector(event.pageX, event.pageY);
+        refreshInspector(); showInspector(event.clientX, event.clientY);
     }
     
-    // STRUCTURE RETRAVAILLÉE : COMPTE EN HAUT ET LIBELLÉ EN DESSOUS POUR UN RENDU NET
     function refreshInspector() {
         const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
         
@@ -606,9 +613,36 @@
         }
     }
 
-    function showInspector(x, y) { 
-        const ins = document.getElementById('inspector'); ins.classList.remove('hidden'); 
-        ins.style.left = x+'px'; ins.style.top = y+'px'; 
+    // CALCUL DE PLACEMENT INTELLIGENT ANTI-DEBORDEMENT ÉCRAN
+    function showInspector(clickX, clickY) { 
+        const ins = document.getElementById('inspector'); 
+        ins.classList.remove('hidden'); 
+        
+        const insWidth = 540;  // Largeur fixée CSS
+        const insHeight = 300; // Hauteur estimée moyenne
+        
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        let targetX = clickX + 10;
+        let targetY = clickY + 10;
+        
+        // Pivot horizontal si débordement à droite
+        if (targetX + insWidth > windowWidth) {
+            targetX = clickX - insWidth - 10;
+        }
+        // Pivot vertical si débordement en bas
+        if (targetY + insHeight > windowHeight) {
+            targetY = clickY - insHeight - 10;
+        }
+        
+        // Sécurité absolue anti-négatif
+        if (targetX < 10) targetX = 10;
+        if (targetY < 10) targetY = 10;
+
+        ins.style.left = targetX + 'px'; 
+        ins.style.top = targetY + 'px'; 
+        
         setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); 
     }
     
@@ -670,7 +704,6 @@
         grid.innerHTML = html + `</tbody>`; lucide.createIcons();
     }
 
-    // RESTAURATION STRICTE DU FORMAT DATE_HEURE_MINUTES ATTENDU POUR LES EXPORTS
     function getFormattedTimestamp() { 
         const now = new Date(); 
         const yyyy = now.getFullYear();
@@ -683,7 +716,7 @@
 
     function exportStateJSON() {
         if (!accounts.length && !Object.keys(mappings).length) return;
-        const stateData = { version: "10.4", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
+        const stateData = { version: "10.5", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
         const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
         link.download = `Backup_WIP_Engine_${getFormattedTimestamp()}.json`; link.click();

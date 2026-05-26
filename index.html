@@ -1,8 +1,9 @@
+<!-- MAPPING ENGINE VERSION : v10.2 (Emergency Stabilized Edition) -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v10.1</title>
+    <title>Mapping Engine v10.2</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -29,7 +30,6 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .inspector-blur { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.98); }
         
-        /* GRILLE ULTRA-COMPACTE */
         .grid-fixed { table-layout: fixed; width: 100%; border-spacing: 0; }
         .col-code { width: 40px; min-width: 40px; }
         .col-label { width: 200px; min-width: 200px; }
@@ -43,25 +43,8 @@
         input:checked + .slider:before { transform: translateX(12px); }
 
         .acc-item-selected:hover { background-color: #1e40af !important; }
-
         .help-tooltip { visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s; }
         .help-trigger:hover .help-tooltip { visibility: visible; opacity: 1; }
-        
-        /* Tooltip dynamique au survol des comptes */
-        #account-hover-tooltip {
-            position: fixed;
-            pointer-events: none;
-            z-index: 5000;
-            background-color: #0f172a;
-            color: #f8fafc;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            max-width: 400px;
-            word-wrap: break-word;
-        }
     </style>
 </head>
 <body class="bg-slate-100 h-screen overflow-hidden font-sans text-slate-800">
@@ -69,6 +52,7 @@
 <div class="flex flex-col h-full">
     <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-[100]">
         
+        <!-- BLOC GAUCHE -->
         <div class="flex items-center gap-3">
             <input type="file" id="balanceInput" accept=".csv, .xlsx, .xls" class="hidden">
             <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold shadow transition-all active:scale-95 shrink-0">
@@ -91,7 +75,7 @@
                         </div>
                     </div>
                     <input type="text" id="maskInput" placeholder="Masque" 
-                        class="w-16 bg-white border border-blue-200 rounded px-1.5 py-0.5 text-[10px] font-black text-blue-800 outline-none focus:border-blue-500 shadow-sm placeholder:text-blue-200" 
+                        class="w-16 bg-white border border-blue-200 rounded px-1.5 py-0.5 text-[10px] font-black text-blue-800 outline-none focus:border-blue-500 shadow-sm" 
                         oninput="this.value = this.value.replace(/[^0-9.]/g, ''); renderAccounts()">
                 </div>
 
@@ -111,47 +95,45 @@
             </div>
         </div>
 
+        <!-- BLOC DROITE -->
         <div class="flex items-center gap-4 ml-auto">
-            
             <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1 shadow-sm shrink-0">
                 <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight px-1">Sauvegarde WIP</span>
-                <button onclick="exportStateJSON()" title="Sauvegarder l'état complet (En-cours + Balance)" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-white rounded transition-colors">
+                <button onclick="exportStateJSON()" title="Sauvegarder l'état complet" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-white rounded transition-colors">
                     <i data-lucide="save" class="w-3.5 h-3.5"></i>
                 </button>
                 <input type="file" id="stateJsonInput" accept=".json" class="hidden" onchange="importStateJSON(event)">
-                <button onclick="document.getElementById('stateJsonInput').click()" title="Reprendre une session sauvegardée (.json)" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-white rounded transition-colors">
+                <button onclick="document.getElementById('stateJsonInput').click()" title="Reprendre une session" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-white rounded transition-colors">
                     <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
                 </button>
-                
                 <div class="w-px h-4 bg-slate-200 mx-0.5"></div>
-                
-                <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight px-1">Charger Mapping csv</span>
+                <span class="text-[9px] font-black text-slate-500 uppercase tracking-tight px-1">Mapping CSV</span>
                 <input type="file" id="auditCsvInput" accept=".csv" class="hidden" onchange="importAuditCSV(event)">
-                <button onclick="document.getElementById('auditCsvInput').click()" title="Audit Externe : Charger un livrable existant (.csv)" class="p-1 text-slate-600 hover:text-emerald-600 hover:bg-white rounded transition-colors">
+                <button onclick="document.getElementById('auditCsvInput').click()" title="Charger un livrable csv" class="p-1 text-slate-600 hover:text-emerald-600 hover:bg-white rounded transition-colors">
                     <i data-lucide="file-check" class="w-3.5 h-3.5 text-emerald-600"></i>
                 </button>
             </div>
 
+            <!-- BLOC SIGNATURE BRUTALISTE -->
             <div class="flex items-center gap-3 border-l border-slate-200 pl-4 h-full select-none shrink-0">
                 <div class="flex flex-col items-end">
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
                     <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.1</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.2</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Mapping
             </button>
 
+            <!-- COUPLAGE FILTRÉ ET FIGÉ STRICTEMENT -->
             <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-300 rounded p-1 shadow-inner shrink-0">
-                <select id="brandSelect" class="w-[110px] min-w-[110px] max-w-[110px] bg-white text-slate-800 rounded px-2 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors truncate" onchange="handleBrandChange()">
+                <select id="brandSelect" class="w-[110px] min-w-[110px] max-w-[110px] bg-white text-slate-800 rounded px-2 py-1 text-xs font-black outline-none border border-slate-200 truncate" onchange="handleBrandChange()">
                     <option value="ALL">TOUTES</option>
                 </select>
-                
                 <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400 shrink-0"></i>
-
-                <select id="section" class="w-[170px] min-w-[170px] max-w-[170px] bg-white text-blue-600 rounded px-2.5 py-1 text-xs font-black outline-none border border-slate-200 hover:border-blue-400 cursor-pointer transition-colors truncate" onchange="switchSection()">
+                <select id="section" class="w-[170px] min-w-[170px] max-w-[170px] bg-white text-blue-600 rounded px-2.5 py-1 text-xs font-black outline-none border border-slate-200 truncate" onchange="switchSection()">
                     <option value="NONE">CHARGEMENT GRILLE...</option>
                 </select>
             </div>
@@ -163,20 +145,18 @@
             <div class="p-3 border-b border-slate-100 flex flex-col gap-2 bg-slate-50/50">
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 help-trigger z-30">
-                            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-slate-400 cursor-help hover:text-blue-500"></i>
-                        </div>
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
                         <input type="text" id="accFilter" placeholder="Filtrer compte..." class="w-full pl-9 pr-2 py-1.5 bg-white border border-slate-200 rounded text-xs outline-none focus:border-blue-400 shadow-sm" oninput="renderAccounts()">
                     </div>
                     <div class="flex items-center bg-white border border-slate-200 rounded p-0.5 shadow-sm">
-                        <button onclick="toggleLenOp()" id="lenOp" class="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-slate-600 hover:bg-slate-100 rounded transition-colors">=</button>
+                        <button onclick="toggleLenOp()" id="lenOp" class="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-slate-600 hover:bg-slate-100 rounded">=</button>
                         <input type="number" id="lenValue" class="w-8 bg-transparent text-[10px] font-bold text-center outline-none" oninput="renderAccounts()">
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
                         <i data-lucide="type" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
-                        <input type="text" id="labelFilter" placeholder="Filtrer libellé..." class="w-full pl-9 pr-2 py-1.5 bg-white border border-slate-200 rounded text-xs outline-none focus:border-blue-400 shadow-sm transition-colors" oninput="renderAccounts()">
+                        <input type="text" id="labelFilter" placeholder="Filtrer libellé..." class="w-full pl-9 pr-2 py-1.5 bg-white border border-slate-200 rounded text-xs outline-none focus:border-blue-400 shadow-sm" oninput="renderAccounts()">
                     </div>
                     <span id="filterCount" class="text-[10px] font-bold text-blue-600 min-w-[25px] text-right">0</span>
                 </div>
@@ -201,6 +181,7 @@
     </main>
 </div>
 
+<!-- POPUP COMPLEMENT MAPPING PARTIEL -->
 <div id="partialPopup" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[2000] flex items-center justify-center hidden opacity-0 transition-opacity duration-150">
     <div class="bg-white rounded-lg shadow-2xl border border-slate-200 w-[420px] overflow-hidden transform scale-95 transition-transform duration-150">
         <div class="bg-slate-900 p-3 flex items-center gap-2 text-white font-black text-[10px] uppercase">
@@ -214,7 +195,7 @@
                 <div class="flex"><span class="w-20 text-slate-400 uppercase text-[9px] font-black">Théorique :</span><span id="popSens" class="text-slate-900 font-mono"></span></div>
             </div>
             <div class="space-y-1">
-                <label class="block text-[10px] font-black text-slate-500 uppercase">Votre valeur (-100 à 100) :</label>
+                <label class="block text-[10px] font-black text-slate-500 uppercase">Valeur à affecter :</label>
                 <input type="number" id="popValueInput" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm font-mono font-black">
             </div>
             <div class="flex items-center justify-end gap-2">
@@ -225,18 +206,25 @@
     </div>
 </div>
 
-<div id="inspector" class="fixed hidden z-[1000] w-[450px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-200 scale-95 opacity-0">
+<!-- INSPECTEUR DRAGGABLE DOUBLE FONCTION (CELLULES ET COMPTES) -->
+<div id="inspector" class="fixed hidden z-[1000] w-[460px] rounded-lg shadow-2xl border border-slate-300 inspector-blur overflow-hidden transition-all duration-150 scale-95 opacity-0">
     <div id="ins-header" class="bg-slate-900 p-2.5 flex justify-between items-center text-white font-bold text-[10px] uppercase cursor-move select-none">
         <div class="flex items-center gap-2 flex-1 min-w-0 mr-4">
             <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400"></i>
             <span id="ins-title" class="truncate font-black text-slate-200">INSPECTEUR</span>
         </div>
-        <button onclick="closeInspector()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <div class="flex items-center gap-2 shrink-0">
+            <button id="ins-clear-btn" onclick="clearAllCellMappings()" title="Vider complètement la cellule" class="p-1 bg-red-900/50 text-red-400 hover:text-red-200 rounded hover:bg-red-800 hidden transition-colors">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="closeInspector()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
     </div>
     <div id="ins-body" class="max-h-[350px] overflow-y-auto custom-scrollbar p-3 bg-white/95 space-y-2"></div>
 </div>
 
-<div id="account-hover-tooltip" class="hidden"></div>
+<!-- LE FLYOVER RETOURNÉ : TEXTE NOIR SUR FOND CLAIR AVEC SEULEMENT LE LIBELLÉ -->
+<div id="account-hover-tooltip" class="fixed hidden pointer-events-none z-[5000] bg-white text-slate-900 border border-slate-200 px-3 py-1.5 rounded shadow-xl text-xs font-bold max-w-sm word-wrap break-word"></div>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => { 
@@ -258,7 +246,7 @@
             .then(res => { if (!res.ok) throw new Error(); return res.arrayBuffer(); })
             .then(buffer => { processGridWorkbook(buffer); })
             .catch(err => {
-                console.error("Erreur d'initialisation de la grille :", err);
+                console.error("Erreur initialisation grille :", err);
                 document.getElementById('section').innerHTML = `<option value="NONE">ERREUR FICHIER</option>`;
             });
     }
@@ -269,9 +257,7 @@
         sectionsData = {}; columnConfigs = {}; cellInfoMap = {}; brandMapping = {};
 
         if (workbook.SheetNames.includes("PARAMETRES")) {
-            const paramSheet = workbook.Sheets["PARAMETRES"];
-            const paramRows = XLSX.utils.sheet_to_json(paramSheet);
-            
+            const paramRows = XLSX.utils.sheet_to_json(workbook.Sheets["PARAMETRES"]);
             paramRows.forEach(row => {
                 const b = row["MARQUE"] ? String(row["MARQUE"]).trim().toUpperCase() : null;
                 const g = row["GRILLE"] ? String(row["GRILLE"]).trim() : null;
@@ -284,7 +270,6 @@
 
         workbook.SheetNames.forEach((name) => {
             if (name === "PARAMETRES") return;
-
             const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1}).slice(0, 502); 
             if (sheetData.length > 1) {
                 sectionsData[name] = sheetData;
@@ -296,8 +281,7 @@
                     direction: directions[cIdx] !== undefined ? parseInt(directions[cIdx]) : 0
                 }));
 
-                const dataRows = sheetData.slice(2);
-                dataRows.forEach((row) => {
+                sheetData.slice(2).forEach((row) => {
                     const code = row[0] ? String(row[0]).trim() : "", label = row[1] || "";
                     if (code === "") return;
 
@@ -307,7 +291,7 @@
                             const isDecimalInversion = (val % 1 >= 0.85 && val % 1 <= 0.95);
                             const cid = isDecimalInversion ? Math.floor(val) : Math.abs(val);
                             cellInfoMap[cid] = { 
-                                rowId: code, rowLabel: label, colHeader: columnConfigs[name][cIdx].title, 
+                                rowId: code, rowLabel: String(label).trim(), colHeader: columnConfigs[name][cIdx].title, 
                                 colIndex: cIdx, section: name, invertSens: isDecimalInversion
                             };
                         }
@@ -322,20 +306,14 @@
 
     function buildBrandSelector() {
         const brandSelect = document.getElementById('brandSelect');
-        const brands = Object.keys(brandMapping).sort();
-        
         let html = `<option value="ALL">TOUTES</option>`;
-        brands.forEach(b => {
-            html += `<option value="${b}">${b}</option>`;
-        });
-        brandSelect.innerHTML = html;
-        brandSelect.value = selectedBrand;
+        Object.keys(brandMapping).sort().forEach(b => { html += `<option value="${b}">${b}</option>`; });
+        brandSelect.innerHTML = html; brandSelect.value = selectedBrand;
     }
 
     function updateSectionSelector(targetSectionToPreserve = null) {
         const sectionSelect = document.getElementById('section');
         const allAvailableSheets = Object.keys(sectionsData);
-        
         let filteredSheets = allAvailableSheets;
         if (selectedBrand !== "ALL" && brandMapping[selectedBrand]) {
             filteredSheets = allAvailableSheets.filter(sheet => brandMapping[selectedBrand].includes(sheet));
@@ -343,96 +321,308 @@
 
         if (filteredSheets.length === 0) {
             sectionSelect.innerHTML = `<option value="NONE">AUCUNE GRILLE</option>`;
-            currentSection = "NONE";
-            return;
+            currentSection = "NONE"; return;
         }
 
         let html = "";
-        filteredSheets.forEach(sheet => {
-            html += `<option value="${sheet}">${sheet}</option>`;
-        });
+        filteredSheets.forEach(sheet => { html += `<option value="${sheet}">${sheet}</option>`; });
         sectionSelect.innerHTML = html;
 
         if (targetSectionToPreserve && filteredSheets.includes(targetSectionToPreserve)) {
             currentSection = targetSectionToPreserve;
         } else if (filteredSheets.includes(currentSection)) {
-            // Reste stable sur la sélection actuelle
+            // Statu quo
         } else {
             currentSection = filteredSheets[0];
         }
-        
         sectionSelect.value = currentSection;
-        renderDynamicGridHeader();
-        renderDynamicGrid();
+        renderDynamicGridHeader(); renderDynamicGrid();
     }
 
-    function handleBrandChange() {
-        selectedBrand = document.getElementById('brandSelect').value;
-        updateSectionSelector();
-    }
+    function handleBrandChange() { selectedBrand = document.getElementById('brandSelect').value; updateSectionSelector(); }
+    window.switchSection = function() { currentSection = document.getElementById('section').value; renderDynamicGridHeader(); renderDynamicGrid(); }
 
-    window.switchSection = function() {
-        currentSection = document.getElementById('section').value; 
-        renderDynamicGridHeader();
-        renderDynamicGrid(); 
-    }
-
-    function exportStateJSON() {
-        if (!accounts.length && !Object.keys(mappings).length) {
-            alert("Rien à sauvegarder."); return;
-        }
-        const stateData = {
-            version: "10.1",
-            mask: document.getElementById('maskInput').value,
-            selectedBrand: selectedBrand,
-            currentSection: currentSection,
-            accounts: accounts,
-            mappings: mappings
-        };
-
-        const timestamp = getFormattedTimestamp();
-        const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `WIP_Mapping_backup_${timestamp}_${getUniqueMappedAccountsCount()}_${accounts.length}.json`;
-        link.click();
-    }
-
-    function importStateJSON(event) {
-        const file = event.target.files[0]; if (!file) return;
+    // PARSAGE SÉCURISÉ EN STRING STRICT DES LA RECEPTION DE LA BALANCE (Élimine le bug de sélection double)
+    document.getElementById('balanceInput').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const stateData = JSON.parse(e.target.result);
-                accounts = stateData.accounts || [];
-                mappings = stateData.mappings || {};
-                document.getElementById('maskInput').value = stateData.mask || "";
-                document.getElementById('totalAcc').innerText = accounts.length;
-                
-                if (stateData.selectedBrand) selectedBrand = stateData.selectedBrand;
-                if (stateData.currentSection) currentSection = stateData.currentSection;
-                
-                document.getElementById('brandSelect').value = selectedBrand;
-                updateSectionSelector(currentSection);
-                renderAccounts();
-                
-                alert("Session restaurée avec succès !");
-            } catch (err) {
-                alert("Erreur de lecture de la session.");
-            }
-            event.target.value = '';
+        reader.onload = function(event) {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ 
+                id: String(r[0]).trim(), 
+                label: String(r[1] || '').trim() 
+            }));
+            document.getElementById('totalAcc').innerText = accounts.length; 
+            selectedIds = []; lastClickedIndex = null;
+            renderAccounts();
         };
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
+    });
+
+    function renderAccounts() {
+        const list = document.getElementById('accList'), usageMap = {}, occurrenceMap = {};
+        const accFilter = document.getElementById('accFilter').value.toLowerCase();
+        const labelFilter = document.getElementById('labelFilter').value.toLowerCase();
+        const mask = document.getElementById('maskInput').value;
+        const unmappedOnly = document.getElementById('unmappedOnly').checked, lenVal = document.getElementById('lenValue').value;
+        
+        Object.values(mappings).flat().forEach(m => {
+            const strId = String(m.accountId);
+            usageMap[strId] = (usageMap[strId] || 0) + Math.abs(m.value);
+            occurrenceMap[strId] = (occurrenceMap[strId] || 0) + 1;
+        });
+
+        const remainingCount = accounts.filter(a => !usageMap[String(a.id)]).length;
+        document.getElementById('absRemains').innerText = remainingCount;
+        document.getElementById('pctRemains').innerText = `(${accounts.length > 0 ? Math.round((remainingCount / accounts.length) * 100) : 0}%)`;
+
+        displayedAccounts = accounts.filter(acc => {
+            const strId = String(acc.id);
+            if (unmappedOnly && (usageMap[strId] || 0) >= 100) return false;
+            const fId = formatAccountId(strId, mask);
+            let mAcc = true;
+            if (accFilter !== "") {
+                try { mAcc = new RegExp("^" + accFilter.replace(/\./g, "\\.").replace(/\*/g, '.*') + "$").test(fId.toLowerCase()); }
+                catch(e) { mAcc = fId.toLowerCase().includes(accFilter); }
+            }
+            if (!mAcc || (labelFilter && !acc.label.toLowerCase().includes(labelFilter))) return false;
+            if (lenVal !== "") {
+                const l = strId.length, t = parseInt(lenVal);
+                if (currentLenOp === '=' && l !== t) return false;
+                if (currentLenOp === '>' && l <= t) return false;
+                if (currentLenOp === '<' && l >= t) return false;
+            }
+            return true;
+        });
+
+        document.getElementById('filterCount').innerText = displayedAccounts.length;
+        list.innerHTML = displayedAccounts.map((acc, index) => {
+            const strId = String(acc.id);
+            const cur = usageMap[strId] || 0; const occ = occurrenceMap[strId] || 0;
+            const isSel = selectedIds.includes(strId);
+            let sColor = "bg-transparent", badge = "";
+            if (cur > 0) {
+                if (cur === 100) sColor = occ > 1 ? "bg-purple-600" : "bg-emerald-500";
+                else if (cur < 100) { sColor = "bg-amber-500"; badge = `<span class="absolute right-3 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Reste: ${100 - cur}</span>`; }
+                else { sColor = "bg-red-500"; badge = `<span class="absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Trop: +${cur - 100}</span>`; }
+            }
+            
+            // CONTEXTMENU ET FLYOVER BRANCHÉS PROPREMENT SUR CHAQUE COMPTE
+            return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}" 
+                onclick="handleAccountClick(event, ${index})"
+                oncontextmenu="openAccountInspector(event, ${index})"
+                onmouseenter="startAccountTooltip(event, ${index})"
+                onmouseleave="clearAccountTooltip()">
+                <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2">${formatAccountId(strId, mask)}</span>
+                <div class="flex-1 min-w-0 pr-16"><span class="block max-w-[340px] truncate text-[10px] uppercase font-bold ${isSel ? 'text-blue-100' : 'text-slate-500'}">${acc.label}</span></div>
+                ${badge}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
+            </div>`;
+        }).join('');
     }
 
-    function getFormattedTimestamp() {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
+    function formatAccountId(id, mask) {
+        if (!mask) return id; const segs = mask.split(/[\.\s]/).map(Number).filter(n => n > 0);
+        let res = [], pos = 0; for (let len of segs) { if (pos >= id.length) break; res.push(id.substring(pos, pos + len)); pos += len; }
+        if (pos < id.length) res.push(id.substring(pos)); return res.join('.');
     }
-    function getUniqueMappedAccountsCount() {
-        const s = new Set(); Object.values(mappings).flat().forEach(m => s.add(m.accountId)); return s.size;
+
+    // CLIC SÉCURISÉ SANS CONFLIT DE TYPE (CHAINE DE CARACTERES STRICTE)
+    function handleAccountClick(e, index) {
+        if (index < 0 || index >= displayedAccounts.length) return;
+        const targetId = String(displayedAccounts[index].id);
+        
+        if (e.shiftKey && lastClickedIndex !== null) {
+            const start = Math.min(lastClickedIndex, index);
+            const end = Math.max(lastClickedIndex, index);
+            const blockIds = displayedAccounts.slice(start, end + 1).map(a => String(a.id));
+            selectedIds = Array.from(new Set([...selectedIds, ...blockIds]));
+        } else if (e.ctrlKey || e.metaKey) {
+            if (selectedIds.includes(targetId)) {
+                selectedIds = selectedIds.filter(id => id !== targetId);
+            } else {
+                selectedIds.push(targetId);
+            }
+        } else {
+            if (selectedIds.length === 1 && selectedIds[0] === targetId) { selectedIds = []; } 
+            else { selectedIds = [targetId]; }
+        }
+        lastClickedIndex = index; 
+        renderAccounts();
     }
-    function getRandomToken() { return Math.random().toString(16).substring(2, 6); }
+
+    // LE FLYOVER CORRIGÉ : FOND CLAIR, TEXTE NOIR, LIBELLÉ SEUL
+    function startAccountTooltip(e, index) {
+        clearAccountTooltip();
+        const acc = displayedAccounts[index]; if (!acc) return;
+        
+        tooltipTimeout = setTimeout(() => {
+            const tooltip = document.getElementById('account-hover-tooltip');
+            tooltip.innerText = acc.label.toUpperCase();
+            tooltip.classList.remove('hidden');
+            tooltip.style.left = (e.clientX + 15) + 'px';
+            tooltip.style.top = (e.clientY + 15) + 'px';
+        }, 2000);
+    }
+
+    function clearAccountTooltip() {
+        if (tooltipTimeout) clearTimeout(tooltipTimeout);
+        document.getElementById('account-hover-tooltip').classList.add('hidden');
+    }
+
+    // CORRECTION MAJEURE : FIN DU BUG DES RAPPORTS DE VALEURS +10000/-10000
+    function handleCellClick(e, cid) {
+        if (!selectedIds.length) return; const info = cellInfoMap[cid]; if (!info) return;
+        let baseDir = columnConfigs[info.section][info.colIndex].direction; // Contient déjà 100 ou -100 du fichier Excel
+        if (info.invertSens) baseDir *= -1;
+        
+        if (e.altKey) { 
+            e.preventDefault(); openPartialPopup(cid, info, baseDir); 
+        } else {
+            if (!mappings[cid]) mappings[cid] = [];
+            selectedIds.forEach(id => { 
+                const strId = String(id);
+                if (!mappings[cid].some(m => m.accountId === strId)) {
+                    mappings[cid].push({ accountId: strId, value: baseDir }); // Plus de multiplication folle par 100 !
+                } 
+            });
+            triggerSuperFlash(cid); selectedIds = []; renderAccounts(); renderDynamicGrid();
+        }
+    }
+
+    function triggerSuperFlash(cid) {
+        const cell = document.getElementById(`cell-${cid}`); if (!cell) return;
+        const rect = cell.getBoundingClientRect(), overlay = document.createElement('div');
+        overlay.className = 'flash-overlay'; overlay.style.top = `${rect.top + window.scrollY}px`; overlay.style.left = `${rect.left + window.scrollX}px`;
+        overlay.style.width = `${rect.width}px`; overlay.style.height = `${rect.height}px`;
+        document.body.appendChild(overlay); overlay.addEventListener('animationend', () => overlay.remove());
+    }
+
+    function openPartialPopup(cid, info, baseDir) {
+        activePopupContext = { cid: cid, theoreticSens: baseDir, accountIds: [...selectedIds] };
+        document.getElementById('popSection').innerText = info.section;
+        document.getElementById('popCellLabel').innerText = `${info.rowId} | ${info.colHeader}`;
+        document.getElementById('popSens').innerText = `${baseDir > 0 ? '+' : ''}${baseDir}`;
+        
+        const input = document.getElementById('popValueInput'); input.value = baseDir;
+        const pop = document.getElementById('partialPopup'); pop.classList.remove('hidden');
+        setTimeout(() => { pop.classList.remove('opacity-0'); input.focus(); input.select(); }, 10);
+    }
+    
+    function closePartialPopup() { document.getElementById('partialPopup').classList.add('hidden'); activePopupContext = null; }
+    
+    function submitPartialPopup() {
+        const v = parseInt(document.getElementById('popValueInput').value);
+        if (isNaN(v) || v === 0 || v < -100 || v > 100) return;
+        if (!mappings[activePopupContext.cid]) mappings[activePopupContext.cid] = [];
+        activePopupContext.accountIds.forEach(id => { 
+            const strId = String(id);
+            if (!mappings[activePopupContext.cid].some(m => m.accountId === strId)) {
+                mappings[activePopupContext.cid].push({ accountId: strId, value: v }); 
+            } 
+        });
+        triggerSuperFlash(activePopupContext.cid); selectedIds = []; closePartialPopup(); renderAccounts(); renderDynamicGrid();
+    }
+
+    // INSPECTEUR DES CELLULES RE-STABILISÉ : LIBELLÉ SUR LA MÊME LIGNE ET BOUTON TOUT VIDER PRÉSENT
+    function openCellInspector(event, cid) {
+        event.preventDefault(); const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
+        ins.dataset.mode = "CELL"; ins.dataset.id = cid;
+        document.getElementById('ins-title').innerText = `CELLULE ${cid} | ${info.rowId} - ${info.rowLabel}`;
+        
+        document.getElementById('ins-clear-btn').classList.remove('hidden'); // Affiche le bouton "Tout vider"
+        refreshInspector(); showInspector(event.pageX, event.pageY);
+    }
+
+    // INSPECTEUR DES COMPTES AU CLIC DROIT RESTAURÉ
+    function openAccountInspector(event, index) {
+        event.preventDefault();
+        const acc = displayedAccounts[index]; if (!acc) return;
+        const strId = String(acc.id);
+        const ins = document.getElementById('inspector');
+        ins.dataset.mode = "ACCOUNT"; ins.dataset.id = strId;
+        document.getElementById('ins-title').innerText = `COMPTE ${strId} | DESTINATIONS`;
+        
+        document.getElementById('ins-clear-btn').classList.add('hidden'); // Pas de "Tout vider" global pour un compte unique
+        refreshInspector(); showInspector(event.pageX, event.pageY);
+    }
+    
+    function refreshInspector() {
+        const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
+        
+        if (ins.dataset.mode === "CELL") {
+            const list = mappings[id] || [];
+            body.innerHTML = list.map(m => {
+                const acc = accounts.find(a => String(a.id) === String(m.accountId));
+                const label = acc ? acc.label : "Libellé inconnu";
+                // Rendu horizontal stable : Numéro de compte + Libellé côte à côte
+                return `<div class="flex items-center justify-between p-2 bg-white border rounded shadow-sm text-xs gap-3">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <span class="font-mono font-bold text-blue-700 shrink-0">${formatAccountId(m.accountId, mask)}</span>
+                        <span class="font-bold text-slate-500 uppercase text-[10px] truncate">${label}</span>
+                    </div>
+                    <div class="flex items-center gap-2.5 shrink-0">
+                        <span class="font-black ${m.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${m.value > 0 ? '+' : ''}${m.value}</span>
+                        <button onclick="removeMapping('${id}','${m.accountId}')" class="text-slate-400 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    </div>
+                </div>`;
+            }).join(list.length ? '' : '<div class="p-4 text-xs text-slate-400 text-center italic">Aucun compte adressé sur cette cellule.</div>');
+        } 
+        else if (ins.dataset.mode === "ACCOUNT") {
+            let foundDestinations = [];
+            for (const [cid, list] of Object.entries(mappings)) {
+                const match = list.find(m => String(m.accountId) === String(id));
+                if (match) { foundDestinations.push({ cellId: cid, value: match.value }); }
+            }
+            body.innerHTML = foundDestinations.map(dest => {
+                const info = cellInfoMap[dest.cellId];
+                const gridContext = info ? `${info.section} -> Ligne ${info.rowId} (${info.colHeader})` : "Cellule isolée";
+                return `<div class="flex items-center justify-between p-2 bg-white border rounded shadow-sm text-xs">
+                    <div class="flex flex-col min-w-0 flex-1">
+                        <span class="font-black text-blue-700">CELLULE ${dest.cellId}</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase truncate">${gridContext}</span>
+                    </div>
+                    <div class="flex items-center gap-2.5 shrink-0">
+                        <span class="font-black ${dest.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${dest.value > 0 ? '+' : ''}${dest.value}</span>
+                        <button onclick="removeMapping('${dest.cellId}','${id}'); refreshInspector();" class="text-slate-400 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    </div>
+                </div>`;
+            }).join(foundDestinations.length ? '' : '<div class="p-4 text-xs text-slate-400 text-center italic">Ce compte n\'est mappé nulle part.</div>');
+        }
+        lucide.createIcons();
+    }
+    
+    function removeMapping(cid, aid) { if(mappings[cid]) mappings[cid] = mappings[cid].filter(m => String(m.accountId) !== String(aid)); refreshInspector(); renderAccounts(); renderDynamicGrid(); }
+    
+    function clearAllCellMappings() {
+        const ins = document.getElementById('inspector'); if (ins.dataset.mode !== "CELL") return;
+        const cid = ins.dataset.id; if (confirm(`Voulez-vous vider l'intégralité de la cellule ${cid} ?`)) {
+            mappings[cid] = []; refreshInspector(); renderAccounts(); renderDynamicGrid();
+        }
+    }
+
+    function showInspector(x, y) { 
+        const ins = document.getElementById('inspector'); ins.classList.remove('hidden'); 
+        ins.style.left = x+'px'; ins.style.top = y+'px'; 
+        setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); 
+    }
+    
+    function closeInspector() { document.getElementById('inspector').classList.add('hidden'); }
+    function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
+
+    function initDraggableInspector() {
+        const inspector = document.getElementById('inspector'), header = document.getElementById('ins-header');
+        if (!inspector || !header) return;
+        let isDragging = false, offsetX = 0, offsetY = 0;
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return; isDragging = true;
+            offsetX = e.clientX - inspector.getBoundingClientRect().left; offsetY = e.clientY - inspector.getBoundingClientRect().top;
+            header.style.cursor = 'grabbing';
+        });
+        document.addEventListener('mousemove', (e) => { if (!isDragging) return; inspector.style.left = (e.clientX - offsetX) + 'px'; inspector.style.top = (e.clientY - offsetY) + 'px'; });
+        document.addEventListener('mouseup', () => { isDragging = false; header.style.cursor = 'move'; });
+    }
 
     function renderDynamicGridHeader() {
         const headerRow = document.getElementById('headerRow'); const config = columnConfigs[currentSection];
@@ -441,17 +631,14 @@
             let w = cIdx === 0 ? "col-code" : (cIdx === 1 ? "col-label" : "col-data");
             let align = (cIdx === 0 || cIdx > 1) ? "text-center" : "text-left pl-4";
             let dirHTML = '<div class="text-[9px] font-bold opacity-0">&nbsp;</div>';
-            if (cIdx > 1 && col.direction !== 0) {
-                dirHTML = `<div class="${col.direction > 0 ? 'text-blue-600' : 'text-amber-600'} text-[10px] font-black mt-1">${col.direction > 0 ? '+' : ''}${col.direction}</div>`;
-            }
+            if (cIdx > 1 && col.direction !== 0) { dirHTML = `<div class="${col.direction > 0 ? 'text-blue-600' : 'text-amber-600'} text-[10px] font-black mt-1">${col.direction > 0 ? '+' : ''}${col.direction}</div>`; }
             return `<th class="${w} px-2 py-3 ${align} text-[11px] font-extrabold uppercase text-slate-700 border-b border-slate-200"><div class="truncate">${col.title}</div>${dirHTML}</th>`;
         }).join('');
     }
 
     function renderDynamicGrid() {
         const grid = document.getElementById('mainGrid'), sheetData = sectionsData[currentSection];
-        const config = columnConfigs[currentSection];
-        if (!sheetData || !config) { grid.innerHTML = ''; return; }
+        const config = columnConfigs[currentSection]; if (!sheetData || !config) { grid.innerHTML = ''; return; }
         let html = `<tbody>`;
         sheetData.slice(2).forEach((row) => {
             const code = row[0] ? String(row[0]).trim() : "", label = row[1] || "", hasCode = code !== "";
@@ -479,284 +666,58 @@
         grid.innerHTML = html + `</tbody>`; lucide.createIcons();
     }
 
-    document.getElementById('balanceInput').addEventListener('change', function(e) {
-        const file = e.target.files[0]; if (!file) return;
+    function exportStateJSON() {
+        if (!accounts.length && !Object.keys(mappings).length) return;
+        const stateData = { version: "10.2", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
+        const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+        link.download = `WIP_Mapping_backup_${getFormattedTimestamp()}.json`; link.click();
+    }
+
+    function importStateJSON(event) {
+        const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(event) {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ id: String(r[0]).trim(), label: String(r[1] || '') }));
-            document.getElementById('totalAcc').innerText = accounts.length; renderAccounts();
+        reader.onload = function(e) {
+            try {
+                const stateData = JSON.parse(e.target.result);
+                accounts = stateData.accounts || []; mappings = stateData.mappings || {};
+                document.getElementById('maskInput').value = stateData.mask || "";
+                document.getElementById('totalAcc').innerText = accounts.length;
+                if (stateData.selectedBrand) selectedBrand = stateData.selectedBrand;
+                if (stateData.currentSection) currentSection = stateData.currentSection;
+                document.getElementById('brandSelect').value = selectedBrand;
+                updateSectionSelector(currentSection); renderAccounts();
+                alert("Session restaurée !");
+            } catch (err) { alert("Erreur fichier JSON."); }
         };
-        reader.readAsArrayBuffer(file);
-    });
-
-    function renderAccounts() {
-        const list = document.getElementById('accList'), usageMap = {}, occurrenceMap = {};
-        const accFilter = document.getElementById('accFilter').value.toLowerCase();
-        const labelFilter = document.getElementById('labelFilter').value.toLowerCase();
-        const mask = document.getElementById('maskInput').value;
-        const unmappedOnly = document.getElementById('unmappedOnly').checked, lenVal = document.getElementById('lenValue').value;
-        
-        Object.values(mappings).flat().forEach(m => {
-            usageMap[m.accountId] = (usageMap[m.accountId] || 0) + Math.abs(m.value);
-            occurrenceMap[m.accountId] = (occurrenceMap[m.accountId] || 0) + 1;
-        });
-
-        const remainingCount = accounts.filter(a => !usageMap[a.id]).length;
-        document.getElementById('absRemains').innerText = remainingCount;
-        document.getElementById('pctRemains').innerText = `(${accounts.length > 0 ? Math.round((remainingCount / accounts.length) * 100) : 0}%)`;
-
-        displayedAccounts = accounts.filter(acc => {
-            if (unmappedOnly && (usageMap[acc.id] || 0) >= 100) return false;
-            const fId = formatAccountId(acc.id, mask);
-            let mAcc = true;
-            if (accFilter !== "") {
-                try { mAcc = new RegExp("^" + accFilter.replace(/\./g, "\\.").replace(/\*/g, '.*') + "$").test(fId.toLowerCase()); }
-                catch(e) { mAcc = fId.toLowerCase().includes(accFilter); }
-            }
-            if (!mAcc || (labelFilter && !acc.label.toLowerCase().includes(labelFilter))) return false;
-            if (lenVal !== "") {
-                const l = acc.id.length, t = parseInt(lenVal);
-                if (currentLenOp === '=' && l !== t) return false;
-                if (currentLenOp === '>' && l <= t) return false;
-                if (currentLenOp === '<' && l >= t) return false;
-            }
-            return true;
-        });
-
-        document.getElementById('filterCount').innerText = displayedAccounts.length;
-        list.innerHTML = displayedAccounts.map((acc, index) => {
-            const cur = usageMap[acc.id] || 0; const occ = occurrenceMap[acc.id] || 0;
-            const isSel = selectedIds.includes(acc.id);
-            let sColor = "bg-transparent", badge = "";
-            if (cur > 0) {
-                if (cur === 100) sColor = occ > 1 ? "bg-purple-600" : "bg-emerald-500";
-                else if (cur < 100) { sColor = "bg-amber-500"; badge = `<span class="absolute right-3 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Reste: ${100 - cur}</span>`; }
-                else { sColor = "bg-red-500"; badge = `<span class="absolute right-3 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">Trop: +${cur - 100}</span>`; }
-            }
-            
-            // Re-injection complete des evenements de survol (fly-over 2 secondes)
-            return `<div class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}" 
-                onclick="handleAccountClick(event, ${index})"
-                onmouseenter="startAccountTooltip(event, ${index})"
-                onmouseleave="clearAccountTooltip()">
-                <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2">${formatAccountId(acc.id, mask)}</span>
-                <div class="flex-1 min-w-0 pr-16"><span class="block max-w-[340px] truncate text-[10px] uppercase font-bold ${isSel ? 'text-blue-100' : 'text-slate-500'}">${acc.label}</span></div>
-                ${badge}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
-            </div>`;
-        }).join('');
+        reader.readAsText(file);
     }
 
-    function formatAccountId(id, mask) {
-        if (!mask) return id; const segs = mask.split(/[\.\s]/).map(Number).filter(n => n > 0);
-        let res = [], pos = 0; for (let len of segs) { if (pos >= id.length) break; res.push(id.substring(pos, pos + len)); pos += len; }
-        if (pos < id.length) res.push(id.substring(pos)); return res.join('.');
-    }
-
-    // GESTION DE LA SÉLECTION DES COMPTES - LOGIQUE SÉCURISÉE ET SYNCHRONISÉE
-    function handleAccountClick(e, index) {
-        if (index < 0 || index >= displayedAccounts.length) return;
-        const targetId = String(displayedAccounts[index].id);
-        
-        if (e.shiftKey && lastClickedIndex !== null) {
-            const start = Math.min(lastClickedIndex, index);
-            const end = Math.max(lastClickedIndex, index);
-            const blockIds = displayedAccounts.slice(start, end + 1).map(a => String(a.id));
-            selectedIds = Array.from(new Set([...selectedIds, ...blockIds]));
-        } else if (e.ctrlKey || e.metaKey) {
-            if (selectedIds.includes(targetId)) {
-                selectedIds = selectedIds.filter(id => id !== targetId);
-            } else {
-                selectedIds.push(targetId);
-            }
-        } else {
-            if (selectedIds.length === 1 && selectedIds[0] === targetId) {
-                selectedIds = [];
-            } else {
-                selectedIds = [targetId];
-            }
-        }
-        lastClickedIndex = index; 
-        renderAccounts();
-    }
-
-    // TIMEOUT DE 2 SECONDES POUR LE SURVOL DU LIBELLÉ DE COMPTE (FLY-OVER)
-    function startAccountTooltip(e, index) {
-        clearAccountTooltip();
-        const acc = displayedAccounts[index];
-        if (!acc) return;
-        
-        tooltipTimeout = setTimeout(() => {
-            const tooltip = document.getElementById('account-hover-tooltip');
-            tooltip.innerText = `${acc.id} - ${acc.label.toUpperCase()}`;
-            tooltip.className = "fixed bg-slate-900 text-white text-[11px] font-bold p-2 rounded shadow-2xl z-[5000] border border-slate-700 pointer-events-none";
-            tooltip.style.left = (e.clientX + 15) + 'px';
-            tooltip.style.top = (e.clientY + 15) + 'px';
-        }, 2000); // Déclenchement strict après 2 secondes
-    }
-
-    function clearAccountTooltip() {
-        if (tooltipTimeout) clearTimeout(tooltipTimeout);
-        const tooltip = document.getElementById('account-hover-tooltip');
-        tooltip.className = "hidden";
-    }
-
-    function handleCellClick(e, cid) {
-        if (!selectedIds.length) return; const info = cellInfoMap[cid]; if (!info) return;
-        let baseDir = columnConfigs[info.section][info.colIndex].direction; 
-        if (info.invertSens) baseDir *= -1;
-        
-        if (e.altKey) { 
-            e.preventDefault(); 
-            openPartialPopup(cid, info, baseDir); 
-        } else {
-            if (!mappings[cid]) mappings[cid] = [];
-            selectedIds.forEach(id => { 
-                if (!mappings[cid].some(m => m.accountId === id)) {
-                    mappings[cid].push({ accountId: id, value: baseDir * 100 }); 
-                } 
-            });
-            triggerSuperFlash(cid); selectedIds = []; renderAccounts(); renderDynamicGrid();
-        }
-    }
-
-    function triggerSuperFlash(cid) {
-        const cell = document.getElementById(`cell-${cid}`); if (!cell) return;
-        const rect = cell.getBoundingClientRect(), overlay = document.createElement('div');
-        overlay.className = 'flash-overlay'; overlay.style.top = `${rect.top + window.scrollY}px`; overlay.style.left = `${rect.left + window.scrollX}px`;
-        overlay.style.width = `${rect.width}px`; overlay.style.height = `${rect.height}px`;
-        document.body.appendChild(overlay); overlay.addEventListener('animationend', () => overlay.remove());
-    }
-
-    // CORRECTION DU SENS THÉORIQUE PAR DÉFAUT POUR LE MAPPING PARTIEL
-    function openPartialPopup(cid, info, baseDir) {
-        activePopupContext = { cid: cid, theoreticSens: baseDir, accountIds: [...selectedIds] };
-        document.getElementById('popSection').innerText = info.section;
-        document.getElementById('popCellLabel').innerText = `${info.rowId} | ${info.colHeader}`;
-        document.getElementById('popSens').innerText = `${baseDir > 0 ? '+' : ''}${baseDir * 100}`;
-        
-        const input = document.getElementById('popValueInput'); 
-        input.value = baseDir * 100; // Injecte directement +100 ou -100 par défaut selon le sens théorique de la cellule
-        
-        const pop = document.getElementById('partialPopup'); 
-        pop.classList.remove('hidden');
-        setTimeout(() => { pop.classList.remove('opacity-0'); input.focus(); input.select(); }, 10);
-    }
-    
-    function closePartialPopup() { document.getElementById('partialPopup').classList.add('hidden'); activePopupContext = null; }
-    
-    function submitPartialPopup() {
-        const v = parseInt(document.getElementById('popValueInput').value);
-        if (isNaN(v) || v === 0 || v < -100 || v > 100) return;
-        if (!mappings[activePopupContext.cid]) mappings[activePopupContext.cid] = [];
-        activePopupContext.accountIds.forEach(id => { 
-            if (!mappings[activePopupContext.cid].some(m => m.accountId === id)) {
-                mappings[activePopupContext.cid].push({ accountId: id, value: v }); 
-            } 
-        });
-        triggerSuperFlash(activePopupContext.cid); selectedIds = []; closePartialPopup(); renderAccounts(); renderDynamicGrid();
-    }
-
-    // INSPECTEUR DES CELLULES (CLIC DROIT CORRIGÉ ET RETOUR DE L'AFFICHAGE)
-    function openCellInspector(event, cid) {
-        event.preventDefault(); const ins = document.getElementById('inspector'), info = cellInfoMap[cid]; if(!info) return;
-        ins.dataset.mode = "CELL"; ins.dataset.id = cid;
-        document.getElementById('ins-title').innerText = `CELLULE ${cid} | ${info.section} - ${info.rowId}`;
-        refreshInspector(); showInspector(event.pageX, event.pageY);
-    }
-    
-    function refreshInspector() {
-        const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
-        if (ins.dataset.mode === "CELL") {
-            const list = mappings[id] || [];
-            body.innerHTML = list.map(m => {
-                const acc = accounts.find(a => a.id === m.accountId);
-                const label = acc ? acc.label : "Libellé inconnu";
-                return `<div class="flex flex-col p-2 bg-white border rounded shadow-sm gap-1">
-                    <div class="flex items-center justify-between">
-                        <span class="font-mono font-bold text-blue-700 text-xs">${formatAccountId(m.accountId, mask)}</span>
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs font-black ${m.value > 0 ? 'text-emerald-600' : 'text-red-600'}">${m.value > 0 ? '+' : ''}${m.value}</span>
-                            <button onclick="removeMapping('${id}','${m.accountId}')" class="text-slate-400 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                        </div>
-                    </div>
-                    <span class="text-[9px] uppercase font-bold text-slate-400 truncate max-w-[400px]">${label}</span>
-                </div>`;
-            }).join(list.length ? '' : '<div class="p-4 text-xs text-slate-400 text-center italic">Aucun compte adressé sur cette cellule.</div>');
-        }
-        lucide.createIcons();
-    }
-    
-    function removeMapping(cid, aid) { if(mappings[cid]) mappings[cid] = mappings[cid].filter(m => m.accountId !== aid); refreshInspector(); renderAccounts(); renderDynamicGrid(); }
-    
-    function showInspector(x, y) { 
-        const ins = document.getElementById('inspector'); 
-        ins.classList.remove('hidden'); 
-        ins.style.left = x+'px'; 
-        ins.style.top = y+'px'; 
-        setTimeout(() => ins.classList.add('scale-100', 'opacity-100'), 10); 
-    }
-    
-    function closeInspector() { document.getElementById('inspector').classList.add('hidden'); }
-    function toggleLenOp() { const ops = ['=', '>', '<']; currentLenOp = ops[(ops.indexOf(currentLenOp) + 1) % ops.length]; document.getElementById('lenOp').innerText = currentLenOp; renderAccounts(); }
-
-    // RÉIMPLÉMENTATION DU DRAG & DROP DE L'INSPECTEUR
-    function initDraggableInspector() {
-        const inspector = document.getElementById('inspector');
-        const header = document.getElementById('ins-header');
-        if (!inspector || !header) return;
-
-        let isDragging = false;
-        let offsetX = 0, offsetY = 0;
-
-        header.addEventListener('mousedown', (e) => {
-            if (e.target.closest('button')) return; // Ne pas drag si on clique sur le bouton fermer
-            isDragging = true;
-            offsetX = e.clientX - inspector.getBoundingClientRect().left;
-            offsetY = e.clientY - inspector.getBoundingClientRect().top;
-            header.style.cursor = 'grabbing';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            inspector.style.left = (e.clientX - offsetX) + 'px';
-            inspector.style.top = (e.clientY - offsetY) + 'px';
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            header.style.cursor = 'move';
-        });
-    }
-
+    function getFormattedTimestamp() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
     function exportMappingCSV() {
         let rows = [];
         for (const [cid, list] of Object.entries(mappings)) {
-            list.forEach(m => { const acc = accounts.find(a => a.id === m.accountId); rows.push(`${m.accountId};${acc ? acc.label : ""};${cid};${m.value}`); });
+            list.forEach(m => { const acc = accounts.find(a => String(a.id) === String(m.accountId)); rows.push(`${m.accountId};${acc ? acc.label : ""};${cid};${m.value}`); });
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = `Adressage_${getFormattedTimestamp()}_${rows.length}_User-${getRandomToken()}.csv`; link.click();
+        link.download = `Adressage_${getFormattedTimestamp()}.csv`; link.click();
     }
 
     function importAuditCSV(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-            const lines = e.target.result.split('\n');
-            mappings = {};
+            const lines = e.target.result.split('\n'); mappings = {};
             lines.forEach(line => {
                 const parts = line.replace(/^\uFEFF/, '').trim().split(';');
                 if (parts.length >= 4) {
-                    const accId = parts[0].trim(), cellId = parseInt(parts[2].trim()), val = parseInt(parts[3].trim());
+                    const accId = String(parts[0].trim()), cellId = parseInt(parts[2].trim()), val = parseInt(parts[3].trim());
                     if (!mappings[cellId]) mappings[cellId] = [];
                     mappings[cellId].push({ accountId: accId, value: val });
                 }
             });
-            renderAccounts(); renderDynamicGrid();
-            alert("Livrable CSV importé !");
+            renderAccounts(); renderDynamicGrid(); alert("CSV importé !");
         };
         reader.readAsText(file, "UTF-8");
     }

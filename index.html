@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v10.7</title>
+    <title>Mapping Engine v11.0</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -118,7 +118,7 @@
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
                     <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v10.7</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v11.0</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
@@ -442,9 +442,9 @@
                 ${badgeHTML}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
             `;
 
+            // RESTAURATION STRICTE V8.7 : Passage explicite de l'ID au clic, pas d'interprétation géométrique
             row.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopImmediatePropagation(); // Verrou de sécurité absolu contre les événements fantômes
                 executeAccountSelection(e, strId);
             });
 
@@ -461,13 +461,12 @@
         });
     }
 
-    // REFONTE INTEGRALE DU CYCLE DE RAFFRAICHISSEMENT DES CLASSES (ZERO PERSISTANCE)
+    // RESTAURATION FIABLE V8.7
     function executeAccountSelection(e, targetId) {
         targetId = String(targetId);
         const idxInDisplayed = displayedAccounts.findIndex(a => String(a.id) === targetId);
         if (idxInDisplayed === -1) return;
 
-        // 1. Calcul du nouvel état de sélection purement en mémoire
         if (e.shiftKey && lastClickedId !== null) {
             const startIdx = displayedAccounts.findIndex(a => String(a.id) === lastClickedId);
             if (startIdx !== -1) {
@@ -483,7 +482,6 @@
                 selectedIds.push(targetId);
             }
         } else {
-            // Clic simple : Si déjà sélectionné de manière isolée on désélectionne, sinon on écrase TOUT par l'unique cible
             if (selectedIds.length === 1 && selectedIds[0] === targetId) { 
                 selectedIds = []; 
             } else { 
@@ -492,7 +490,7 @@
         }
         lastClickedId = targetId;
 
-        // 2. NETTOYAGE ABSOLU DE LA LISTE VISUELLE (Supprime mathématiquement le bug du double reflet)
+        // Rafraîchissement visuel propre
         const allRows = document.getElementById('accList').querySelectorAll('.acc-row');
         allRows.forEach(el => {
             el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none border-l-transparent text-slate-700 hover:bg-slate-50";
@@ -501,7 +499,6 @@
             if (spans[1]) spans[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-slate-500";
         });
 
-        // 3. APPLICATION EXCLUSIVE DES STYLES ACTIFS
         selectedIds.forEach(id => {
             const el = document.getElementById(`acc-row-${id}`);
             if (el) {
@@ -739,7 +736,7 @@
 
     function exportStateJSON() {
         if (!accounts.length && !Object.keys(mappings).length) return;
-        const stateData = { version: "10.7", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
+        const stateData = { version: "11.0", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
         const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
         link.download = `Backup_WIP_Engine_${getFormattedTimestamp()}.json`; link.click();

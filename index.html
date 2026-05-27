@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v12-X</title>
+    <title>Mapping Engine v12.1X</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -56,7 +56,7 @@
         <div class="flex items-center gap-3">
             <input type="file" id="balanceInput" accept=".csv, .xlsx, .xls" class="hidden">
             <button onclick="document.getElementById('balanceInput').click()" class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold shadow transition-all active:scale-95 shrink-0">
-                <i data-lucide="file-up" class="w-3.5 h-3.5"></i> Charger Balance
+                <i data-lucide="file-up" class="w-3.5 h-3.5"></i> Charger Balance (V12.1X)
             </button>
             
             <div class="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1 shadow-inner shrink-0">
@@ -118,7 +118,7 @@
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
                     <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v12-X</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v12.1X</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
@@ -160,19 +160,14 @@
             </div>
             <div id="accList" class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50 bg-white"></div>
         </aside>
-
         <section id="grid-area" class="flex-1 flex flex-col p-6 bg-slate-50 overflow-hidden">
             <div class="flex flex-col h-full rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div class="bg-slate-100 border-b border-slate-200 shrink-0">
                     <table class="grid-fixed">
-                        <thead>
-                            <tr id="headerRow"></tr>
-                        </thead>
+                        <thead><tr id="headerRow"></tr></thead>
                     </table>
                 </div>
-                <div class="flex-1 overflow-y-auto custom-scrollbar">
-                    <table class="grid-fixed border-collapse" id="mainGrid"></table>
-                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar"><table class="grid-fixed border-collapse" id="mainGrid"></table></div>
             </div>
         </section>
     </main>
@@ -295,7 +290,6 @@
                 });
             }
         });
-
         buildBrandSelector();
         updateSectionSelector();
     }
@@ -338,57 +332,64 @@
     function handleBrandChange() { selectedBrand = document.getElementById('brandSelect').value; updateSectionSelector(); }
     window.switchSection = function() { currentSection = document.getElementById('section').value; renderDynamicGridHeader(); renderDynamicGrid(); }
 
-    // --- MOTEUR D'AUDIT V12-X (Intégré dans le listener de chargement) ---
+    // --- MOTEUR D'AUDIT V12.1X ---
     document.getElementById('balanceInput').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
-        
         reader.onload = function(event) {
             const data = new Uint8Array(event.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            const dataRows = rows.slice(1).filter(r => r[0]);
             
-            const rawData = rows.slice(1).filter(r => r[0]);
-            const seen = new Set();
-            const duplicates = [];
-            const cleanAccounts = [];
+            // AUDIT : Vérification des doublons
+            const groups = {}, duplicates = [];
+            dataRows.forEach((r, index) => {
+                const id = String(r[0]).trim();
+                const label = r[1] ? String(r[1]).trim() : "";
+                const rowNum = index + 2; // +1 pour en-tête, +1 pour index 0
+                if (!groups[id]) groups[id] = [];
+                groups[id].push({ id, label, rowNum });
+            });
 
-            rawData.forEach((r, index) => {
-                const id = String(r[0]).trim(); 
-                if (seen.has(id)) {
-                    duplicates.push({ id, label: r[1] || "", row: index + 2 });
-                } else {
-                    seen.add(id);
-                    cleanAccounts.push({ uid: 'uid_' + index, id: id, label: String(r[1] || '').trim() });
+            let hasDuplicates = false;
+            Object.keys(groups).forEach(id => {
+                if (groups[id].length > 1) {
+                    hasDuplicates = true;
+                    groups[id].forEach(item => duplicates.push(item));
                 }
             });
 
-            if (duplicates.length > 0) {
-                alert(`⚠️ ALERTE : ${duplicates.length} doublons détectés !\nLe fichier d'audit a été téléchargé. Veuillez nettoyer la source.`);
-                exportDuplicatesCSV(duplicates);
-                accounts = []; 
-            } else {
-                accounts = cleanAccounts;
+            if (hasDuplicates) {
+                exportAuditCSV(duplicates);
+                alert(`⚠️ ERREUR : ${duplicates.length} doublons détectés.\nLe fichier d'audit a été généré.\nLe processus de chargement est bloqué.`);
+                return; // BLOCAGE TOTAL
             }
+
+            // SI OK : Chargement standard V11.1
+            accounts = dataRows.map((r, index) => ({ 
+                uid: 'uid_' + index,
+                id: String(r[0]).trim(), 
+                label: String(r[1] || '').trim() 
+            }));
             
-            document.getElementById('totalAcc').innerText = accounts.length;
+            document.getElementById('totalAcc').innerText = accounts.length; 
             selectedUids = []; lastClickedUid = null; hiddenAccountsCache.clear();
             renderAccounts(true);
         };
         reader.readAsArrayBuffer(file);
     });
 
-    function exportDuplicatesCSV(duplicates) {
-        let csv = "\uFEFFNumero Compte;Libelle;Ligne Excel\n";
-        duplicates.forEach(d => { csv += `${d.id};${String(d.label).replace(/;/g, ',')};${d.row}\n`; });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `AUDIT_DOUBLONS_${getFormattedTimestamp()}.csv`;
-        link.click();
+    function exportAuditCSV(data) {
+        data.sort((a, b) => a.id.localeCompare(b.id));
+        let csvContent = "\uFEFFCompte;Libellé;Ligne Excel\n";
+        data.forEach(d => { csvContent += `${d.id};"${d.label.replace(/"/g, '""')}";${d.rowNum}\n`; });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+        link.download = `AUDIT_DOUBLONS_${getFormattedTimestamp()}.csv`; link.click();
     }
+    // --- FIN MOTEUR D'AUDIT ---
 
-    // --- RENDER & MAPPING (Code V11.1) ---
     function renderAccounts(rebuildCache = false) {
         const list = document.getElementById('accList');
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
@@ -439,7 +440,6 @@
         document.getElementById('filterCount').innerText = displayedAccounts.length;
         
         let html = "";
-        
         displayedAccounts.forEach(acc => {
             const strId = String(acc.id);
             const cur = usageMap[strId] || 0; 
@@ -469,12 +469,12 @@
                 ${badgeHTML}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
             </div>`;
         });
-        
         list.innerHTML = html;
     }
 
     function executeAccountSelection(e, targetUid) {
         if (e) { e.preventDefault(); e.stopPropagation(); }
+
         const idxInDisplayed = displayedAccounts.findIndex(a => a.uid === targetUid);
         if (idxInDisplayed === -1) return;
 
@@ -487,20 +487,36 @@
                 selectedUids = Array.from(new Set([...selectedUids, ...blockUids]));
             }
         } else if (e.ctrlKey || e.metaKey) {
-            if (selectedUids.includes(targetUid)) selectedUids = selectedUids.filter(uid => uid !== targetUid);
-            else selectedUids.push(targetUid);
+            if (selectedUids.includes(targetUid)) {
+                selectedUids = selectedUids.filter(uid => uid !== targetUid);
+            } else {
+                selectedUids.push(targetUid);
+            }
         } else {
-            if (selectedUids.length === 1 && selectedUids[0] === targetUid) selectedUids = []; 
-            else selectedUids = [targetUid]; 
+            if (selectedUids.length === 1 && selectedUids[0] === targetUid) { 
+                selectedUids = []; 
+            } else { 
+                selectedUids = [targetUid]; 
+            }
         }
         lastClickedUid = targetUid;
+
         const allRows = document.getElementById('accList').querySelectorAll('.acc-row');
         allRows.forEach(el => {
             el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none border-l-transparent text-slate-700 hover:bg-slate-50";
+            const spans = el.querySelectorAll('span');
+            if (spans[0]) spans[0].className = "font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 text-slate-800";
+            if (spans[1]) spans[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-slate-500";
         });
+
         selectedUids.forEach(uid => {
             const el = document.getElementById(`acc-row-${uid}`);
-            if (el) el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none bg-blue-600 text-white border-l-blue-900 acc-item-selected";
+            if (el) {
+                el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none bg-blue-600 text-white border-l-blue-900 acc-item-selected";
+                const spans = el.querySelectorAll('span');
+                if (spans[0]) spans[0].className = "font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 text-white";
+                if (spans[1]) spans[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-white";
+            }
         });
     }
 
@@ -522,7 +538,10 @@
         }, 2000);
     }
 
-    function clearAccountTooltip() { if (tooltipTimeout) clearTimeout(tooltipTimeout); document.getElementById('account-hover-tooltip').classList.add('hidden'); }
+    function clearAccountTooltip() {
+        if (tooltipTimeout) clearTimeout(tooltipTimeout);
+        document.getElementById('account-hover-tooltip').classList.add('hidden');
+    }
 
     function handleCellClick(e, cid) {
         if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -530,15 +549,18 @@
         let baseDir = columnConfigs[info.section][info.colIndex].direction;
         if (info.invertSens) baseDir *= -1;
         
-        if (e.altKey) { openPartialPopup(cid, info, baseDir); } 
-        else {
+        if (e.altKey) { 
+            openPartialPopup(cid, info, baseDir); 
+        } else {
             if (!mappings[cid]) mappings[cid] = [];
             selectedUids.forEach(uid => { 
                 const acc = accounts.find(a => a.uid === uid);
                 if (acc) {
                     const strId = acc.id; 
-                    if (!mappings[cid].some(m => m.accountId === strId)) mappings[cid].push({ accountId: strId, value: baseDir });
-                } 
+                    if (!mappings[cid].some(m => m.accountId === strId)) {
+                        mappings[cid].push({ accountId: strId, value: baseDir });
+                    } 
+                }
             });
             triggerSuperFlash(cid); selectedUids = []; renderAccounts(false); renderDynamicGrid();
         }
@@ -557,6 +579,7 @@
         document.getElementById('popSection').innerText = info.section;
         document.getElementById('popCellLabel').innerText = `${info.rowId} | ${info.colHeader}`;
         document.getElementById('popSens').innerText = `${baseDir > 0 ? '+' : ''}${baseDir}`;
+        
         const input = document.getElementById('popValueInput'); input.value = baseDir;
         const pop = document.getElementById('partialPopup'); pop.classList.remove('hidden');
         setTimeout(() => { pop.classList.remove('opacity-0'); input.focus(); input.select(); }, 10);
@@ -572,7 +595,9 @@
             const acc = accounts.find(a => a.uid === uid);
             if (acc) {
                 const strId = acc.id;
-                if (!mappings[activePopupContext.cid].some(m => m.accountId === strId)) mappings[activePopupContext.cid].push({ accountId: strId, value: v }); 
+                if (!mappings[activePopupContext.cid].some(m => m.accountId === strId)) {
+                    mappings[activePopupContext.cid].push({ accountId: strId, value: v }); 
+                }
             } 
         });
         triggerSuperFlash(activePopupContext.cid); selectedUids = []; closePartialPopup(); renderAccounts(false); renderDynamicGrid();
@@ -590,6 +615,7 @@
     function openAccountInspector(event, targetUid) {
         event.preventDefault(); event.stopPropagation();
         const acc = accounts.find(a => a.uid === targetUid); if (!acc) return;
+        
         const ins = document.getElementById('inspector');
         ins.dataset.mode = "ACCOUNT"; ins.dataset.id = acc.id;
         document.getElementById('ins-title').innerText = `COMPTE ${acc.id} | DESTINATIONS`;
@@ -599,6 +625,7 @@
     
     function refreshInspector() {
         const ins = document.getElementById('inspector'), body = document.getElementById('ins-body'), id = ins.dataset.id, mask = document.getElementById('maskInput').value;
+        
         if (ins.dataset.mode === "CELL") {
             const list = mappings[id] || [];
             body.innerHTML = list.map(m => {
@@ -721,18 +748,26 @@
 
     function getFormattedTimestamp() { 
         const now = new Date(); 
-        return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}h${String(now.getMinutes()).padStart(2,'0')}`; 
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}_${hh}h${min}`; 
     }
 
-    function getUniqueMappedAccountsCount() { const s = new Set(); Object.values(mappings).flat().forEach(m => s.add(m.accountId)); return s.size; }
+    function getUniqueMappedAccountsCount() {
+        const s = new Set(); Object.values(mappings).flat().forEach(m => s.add(m.accountId)); return s.size;
+    }
+    
     function getRandomToken() { return Math.random().toString(16).substring(2, 6); }
 
     function exportStateJSON() {
         if (!accounts.length && !Object.keys(mappings).length) { alert("Rien à sauvegarder."); return; }
-        const stateData = { version: "12-X", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
+        const stateData = { version: "12.1X", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
         const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = `WIP_Mapping_backup_${getFormattedTimestamp()}.json`;
+        link.download = `WIP_Mapping_backup_${getFormattedTimestamp()}_${getUniqueMappedAccountsCount()}_${accounts.length}.json`;
         link.click();
     }
 
@@ -742,7 +777,11 @@
         reader.onload = function(e) {
             try {
                 const stateData = JSON.parse(e.target.result);
-                accounts = (stateData.accounts || []).map((a, i) => ({ uid: a.uid || ('uid_' + i), id: String(a.id), label: String(a.label) }));
+                accounts = (stateData.accounts || []).map((a, i) => ({
+                    uid: a.uid || ('uid_' + i),
+                    id: String(a.id),
+                    label: String(a.label)
+                }));
                 mappings = stateData.mappings || {};
                 document.getElementById('maskInput').value = stateData.mask || "";
                 document.getElementById('totalAcc').innerText = accounts.length;
@@ -750,7 +789,9 @@
                 if (stateData.currentSection) currentSection = stateData.currentSection;
                 document.getElementById('brandSelect').value = selectedBrand;
                 updateSectionSelector(currentSection); renderAccounts(true);
+                alert("Session restaurée !");
             } catch (err) { alert("Erreur fichier JSON."); }
+            event.target.value = '';
         };
         reader.readAsText(file);
     }
@@ -762,7 +803,7 @@
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = `Adressage_${getFormattedTimestamp()}.csv`; link.click();
+        link.download = `Adressage_${getFormattedTimestamp()}_${rows.length}_User-${getRandomToken()}.csv`; link.click();
     }
 
     function importAuditCSV(event) {
@@ -779,6 +820,7 @@
                 }
             });
             renderAccounts(true); renderDynamicGrid(); alert("CSV importé !");
+            event.target.value = '';
         };
         reader.readAsText(file, "UTF-8");
     }

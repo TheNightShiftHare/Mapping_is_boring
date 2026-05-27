@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Mapping Engine v11.0</title>
+    <title>Mapping Engine v11.1</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -118,7 +118,7 @@
                     <span class="font-black text-xs text-slate-800 uppercase leading-none tracking-normal">M&nbsp;A&nbsp;P&nbsp;P&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;&nbsp;I&nbsp;S&nbsp;&nbsp;&nbsp;B&nbsp;O&nbsp;R&nbsp;I&nbsp;N&nbsp;G</span>
                     <span class="text-[10px] font-black text-fuchsia-600 tracking-wide uppercase mt-1 leading-none">[©] Tool Dev By Eric MUNSCHI</span>
                 </div>
-                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v11.0</span>
+                <span class="text-xs font-black bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 tracking-tight">v11.1</span>
             </div>
 
             <button onclick="exportMappingCSV()" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0">
@@ -227,7 +227,8 @@
         loadAutoGrid(); 
     });
 
-    let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=', selectedIds = [], lastClickedId = null;
+    let accounts = [], displayedAccounts = [], sectionsData = {}, currentSection = "NONE", cellInfoMap = {}, mappings = {}, currentLenOp = '=';
+    let selectedUids = [], lastClickedUid = null; 
     let columnConfigs = {}; 
     let activePopupContext = null;
     let brandMapping = {}; 
@@ -344,17 +345,22 @@
             const data = new Uint8Array(event.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-            accounts = rows.slice(1).filter(r => r[0]).map(r => ({ 
+            
+            // LA CLÉ EST ICI : Ajout du UID unique pour pallier aux doublons de la balance
+            accounts = rows.slice(1).filter(r => r[0]).map((r, index) => ({ 
+                uid: 'uid_' + index,
                 id: String(r[0]).trim(), 
                 label: String(r[1] || '').trim() 
             }));
+            
             document.getElementById('totalAcc').innerText = accounts.length; 
-            selectedIds = []; lastClickedId = null; hiddenAccountsCache.clear();
+            selectedUids = []; lastClickedUid = null; hiddenAccountsCache.clear();
             renderAccounts(true);
         };
         reader.readAsArrayBuffer(file);
     });
 
+    // MOTEUR DE RENDU ULTRA RAPIDE BASE SUR LE UID
     function renderAccounts(rebuildCache = false) {
         const list = document.getElementById('accList');
         const accFilter = document.getElementById('accFilter').value.toLowerCase();
@@ -376,17 +382,16 @@
         if (rebuildCache) {
             hiddenAccountsCache.clear();
             accounts.forEach(acc => {
-                const strId = String(acc.id);
-                if (unmappedOnly && (usageMap[strId] || 0) >= 100) {
-                    hiddenAccountsCache.add(strId);
+                if (unmappedOnly && (usageMap[String(acc.id)] || 0) >= 100) {
+                    hiddenAccountsCache.add(acc.uid);
                 }
             });
         }
 
         displayedAccounts = accounts.filter(acc => {
-            const strId = String(acc.id);
-            if (hiddenAccountsCache.has(strId)) return false;
+            if (hiddenAccountsCache.has(acc.uid)) return false;
             
+            const strId = String(acc.id);
             const fId = formatAccountId(strId, mask);
             let mAcc = true;
             if (accFilter !== "") {
@@ -405,16 +410,15 @@
 
         document.getElementById('filterCount').innerText = displayedAccounts.length;
         
-        list.innerHTML = "";
+        let html = "";
         
         displayedAccounts.forEach(acc => {
             const strId = String(acc.id);
             const cur = usageMap[strId] || 0; 
             const occ = occurrenceMap[strId] || 0;
-            const isSel = selectedIds.includes(strId);
+            const isSel = selectedUids.includes(acc.uid);
             
-            let sColor = "bg-transparent";
-            let badgeHTML = "";
+            let sColor = "bg-transparent", badgeHTML = "";
             if (cur > 0) {
                 if (cur === 100) sColor = occ > 1 ? "bg-purple-600" : "bg-emerald-500";
                 else if (cur < 100) { 
@@ -426,71 +430,53 @@
                 }
             }
 
-            const row = document.createElement('div');
-            row.id = `acc-row-${strId}`;
-            row.className = `acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none`;
-            
-            if (isSel) {
-                row.classList.add('bg-blue-600', 'text-white', 'border-l-blue-900', 'acc-item-selected');
-            } else {
-                row.classList.add('border-l-transparent', 'text-slate-700', 'hover:bg-slate-50');
-            }
-
-            row.innerHTML = `
+            // Génération de la ligne avec ID physique = UID unique
+            html += `
+            <div id="acc-row-${acc.uid}" class="acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none ${isSel ? 'bg-blue-600 text-white border-l-blue-900 acc-item-selected' : 'border-l-transparent text-slate-700 hover:bg-slate-50'}"
+                 onclick="executeAccountSelection(event, '${acc.uid}')"
+                 oncontextmenu="openAccountInspector(event, '${acc.uid}')"
+                 onmouseenter="startAccountTooltip(event, '${acc.uid}')"
+                 onmouseleave="clearAccountTooltip()">
                 <span class="font-mono text-sm font-bold w-56 shrink-0 truncate pr-2 ${isSel ? 'text-white' : 'text-slate-800'}">${formatAccountId(strId, mask)}</span>
                 <div class="flex-1 min-w-0 pr-16"><span class="block max-w-[340px] truncate text-[10px] uppercase font-bold ${isSel ? 'text-white' : 'text-slate-500'}">${acc.label}</span></div>
                 ${badgeHTML}<div class="absolute right-0 top-0 bottom-0 w-1 ${sColor}"></div>
-            `;
-
-            // RESTAURATION STRICTE V8.7 : Passage explicite de l'ID au clic, pas d'interprétation géométrique
-            row.addEventListener('click', (e) => {
-                e.preventDefault();
-                executeAccountSelection(e, strId);
-            });
-
-            row.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                openAccountInspector(e, strId);
-            });
-
-            row.addEventListener('mouseenter', (e) => startAccountTooltip(e, strId));
-            row.addEventListener('mouseleave', clearAccountTooltip);
-
-            list.appendChild(row);
+            </div>`;
         });
+        
+        list.innerHTML = html;
     }
 
-    // RESTAURATION FIABLE V8.7
-    function executeAccountSelection(e, targetId) {
-        targetId = String(targetId);
-        const idxInDisplayed = displayedAccounts.findIndex(a => String(a.id) === targetId);
+    // LOGIQUE DE SELECTION ABSOLUE SUR UID
+    function executeAccountSelection(e, targetUid) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+
+        const idxInDisplayed = displayedAccounts.findIndex(a => a.uid === targetUid);
         if (idxInDisplayed === -1) return;
 
-        if (e.shiftKey && lastClickedId !== null) {
-            const startIdx = displayedAccounts.findIndex(a => String(a.id) === lastClickedId);
+        if (e.shiftKey && lastClickedUid !== null) {
+            const startIdx = displayedAccounts.findIndex(a => a.uid === lastClickedUid);
             if (startIdx !== -1) {
                 const start = Math.min(startIdx, idxInDisplayed);
                 const end = Math.max(startIdx, idxInDisplayed);
-                const blockIds = displayedAccounts.slice(start, end + 1).map(a => String(a.id));
-                selectedIds = Array.from(new Set([...selectedIds, ...blockIds]));
+                const blockUids = displayedAccounts.slice(start, end + 1).map(a => a.uid);
+                selectedUids = Array.from(new Set([...selectedUids, ...blockUids]));
             }
         } else if (e.ctrlKey || e.metaKey) {
-            if (selectedIds.includes(targetId)) {
-                selectedIds = selectedIds.filter(id => id !== targetId);
+            if (selectedUids.includes(targetUid)) {
+                selectedUids = selectedUids.filter(uid => uid !== targetUid);
             } else {
-                selectedIds.push(targetId);
+                selectedUids.push(targetUid);
             }
         } else {
-            if (selectedIds.length === 1 && selectedIds[0] === targetId) { 
-                selectedIds = []; 
+            if (selectedUids.length === 1 && selectedUids[0] === targetUid) { 
+                selectedUids = []; 
             } else { 
-                selectedIds = [targetId]; 
+                selectedUids = [targetUid]; 
             }
         }
-        lastClickedId = targetId;
+        lastClickedUid = targetUid;
 
-        // Rafraîchissement visuel propre
+        // Reset de toutes les lignes visibles
         const allRows = document.getElementById('accList').querySelectorAll('.acc-row');
         allRows.forEach(el => {
             el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none border-l-transparent text-slate-700 hover:bg-slate-50";
@@ -499,8 +485,9 @@
             if (spans[1]) spans[1].className = "block max-w-[340px] truncate text-[10px] uppercase font-bold text-slate-500";
         });
 
-        selectedIds.forEach(id => {
-            const el = document.getElementById(`acc-row-${id}`);
+        // Application de la couleur uniquement aux UIDs sélectionnés
+        selectedUids.forEach(uid => {
+            const el = document.getElementById(`acc-row-${uid}`);
             if (el) {
                 el.className = "acc-row relative flex items-center px-3 py-2 cursor-pointer border-l-4 select-none bg-blue-600 text-white border-l-blue-900 acc-item-selected";
                 const spans = el.querySelectorAll('span');
@@ -516,9 +503,9 @@
         if (pos < id.length) res.push(id.substring(pos)); return res.join('.');
     }
 
-    function startAccountTooltip(e, targetId) {
+    function startAccountTooltip(e, targetUid) {
         clearAccountTooltip();
-        const acc = accounts.find(a => String(a.id) === String(targetId)); if (!acc) return;
+        const acc = accounts.find(a => a.uid === targetUid); if (!acc) return;
         tooltipTimeout = setTimeout(() => {
             const tooltip = document.getElementById('account-hover-tooltip');
             tooltip.innerText = acc.label.toUpperCase();
@@ -535,7 +522,7 @@
 
     function handleCellClick(e, cid) {
         if (e) { e.preventDefault(); e.stopPropagation(); }
-        if (!selectedIds.length) return; const info = cellInfoMap[cid]; if (!info) return;
+        if (!selectedUids.length) return; const info = cellInfoMap[cid]; if (!info) return;
         let baseDir = columnConfigs[info.section][info.colIndex].direction;
         if (info.invertSens) baseDir *= -1;
         
@@ -543,13 +530,16 @@
             openPartialPopup(cid, info, baseDir); 
         } else {
             if (!mappings[cid]) mappings[cid] = [];
-            selectedIds.forEach(id => { 
-                const strId = String(id);
-                if (!mappings[cid].some(m => m.accountId === strId)) {
-                    mappings[cid].push({ accountId: strId, value: baseDir });
-                } 
+            selectedUids.forEach(uid => { 
+                const acc = accounts.find(a => a.uid === uid);
+                if (acc) {
+                    const strId = acc.id; // On enregistre le vrai N° de compte pour le CSV
+                    if (!mappings[cid].some(m => m.accountId === strId)) {
+                        mappings[cid].push({ accountId: strId, value: baseDir });
+                    } 
+                }
             });
-            triggerSuperFlash(cid); selectedIds = []; renderAccounts(false); renderDynamicGrid();
+            triggerSuperFlash(cid); selectedUids = []; renderAccounts(false); renderDynamicGrid();
         }
     }
 
@@ -562,7 +552,7 @@
     }
 
     function openPartialPopup(cid, info, baseDir) {
-        activePopupContext = { cid: cid, theoreticSens: baseDir, accountIds: [...selectedIds] };
+        activePopupContext = { cid: cid, theoreticSens: baseDir, accountIds: [...selectedUids] };
         document.getElementById('popSection').innerText = info.section;
         document.getElementById('popCellLabel').innerText = `${info.rowId} | ${info.colHeader}`;
         document.getElementById('popSens').innerText = `${baseDir > 0 ? '+' : ''}${baseDir}`;
@@ -578,13 +568,16 @@
         const v = parseInt(document.getElementById('popValueInput').value);
         if (isNaN(v) || v === 0 || v < -100 || v > 100) return;
         if (!mappings[activePopupContext.cid]) mappings[activePopupContext.cid] = [];
-        activePopupContext.accountIds.forEach(id => { 
-            const strId = String(id);
-            if (!activePopupContext.accountIds.some(m => m.accountId === strId)) {
-                mappings[activePopupContext.cid].push({ accountId: strId, value: v }); 
+        activePopupContext.accountIds.forEach(uid => { 
+            const acc = accounts.find(a => a.uid === uid);
+            if (acc) {
+                const strId = acc.id;
+                if (!mappings[activePopupContext.cid].some(m => m.accountId === strId)) {
+                    mappings[activePopupContext.cid].push({ accountId: strId, value: v }); 
+                }
             } 
         });
-        triggerSuperFlash(activePopupContext.cid); selectedIds = []; closePartialPopup(); renderAccounts(false); renderDynamicGrid();
+        triggerSuperFlash(activePopupContext.cid); selectedUids = []; closePartialPopup(); renderAccounts(false); renderDynamicGrid();
     }
 
     function openCellInspector(event, cid) {
@@ -596,12 +589,13 @@
         refreshInspector(); showInspector(event.clientX, event.clientY);
     }
 
-    function openAccountInspector(event, targetId) {
+    function openAccountInspector(event, targetUid) {
         event.preventDefault(); event.stopPropagation();
-        const strId = String(targetId);
+        const acc = accounts.find(a => a.uid === targetUid); if (!acc) return;
+        
         const ins = document.getElementById('inspector');
-        ins.dataset.mode = "ACCOUNT"; ins.dataset.id = strId;
-        document.getElementById('ins-title').innerText = `COMPTE ${strId} | DESTINATIONS`;
+        ins.dataset.mode = "ACCOUNT"; ins.dataset.id = acc.id;
+        document.getElementById('ins-title').innerText = `COMPTE ${acc.id} | DESTINATIONS`;
         document.getElementById('ins-clear-btn').classList.add('hidden');
         refreshInspector(); showInspector(event.clientX, event.clientY);
     }
@@ -731,15 +725,27 @@
 
     function getFormattedTimestamp() { 
         const now = new Date(); 
-        return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`; 
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}_${hh}h${min}`; 
     }
 
+    function getUniqueMappedAccountsCount() {
+        const s = new Set(); Object.values(mappings).flat().forEach(m => s.add(m.accountId)); return s.size;
+    }
+    
+    function getRandomToken() { return Math.random().toString(16).substring(2, 6); }
+
     function exportStateJSON() {
-        if (!accounts.length && !Object.keys(mappings).length) return;
-        const stateData = { version: "11.0", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
+        if (!accounts.length && !Object.keys(mappings).length) { alert("Rien à sauvegarder."); return; }
+        const stateData = { version: "11.1", mask: document.getElementById('maskInput').value, selectedBrand: selectedBrand, currentSection: currentSection, accounts: accounts, mappings: mappings };
         const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = `Backup_WIP_Engine_${getFormattedTimestamp()}.json`; link.click();
+        link.download = `WIP_Mapping_backup_${getFormattedTimestamp()}_${getUniqueMappedAccountsCount()}_${accounts.length}.json`;
+        link.click();
     }
 
     function importStateJSON(event) {
@@ -748,7 +754,15 @@
         reader.onload = function(e) {
             try {
                 const stateData = JSON.parse(e.target.result);
-                accounts = stateData.accounts || []; mappings = stateData.mappings || {};
+                
+                // Maintien ou création des UID lors du rechargement
+                accounts = (stateData.accounts || []).map((a, i) => ({
+                    uid: a.uid || ('uid_' + i),
+                    id: String(a.id),
+                    label: String(a.label)
+                }));
+                
+                mappings = stateData.mappings || {};
                 document.getElementById('maskInput').value = stateData.mask || "";
                 document.getElementById('totalAcc').innerText = accounts.length;
                 if (stateData.selectedBrand) selectedBrand = stateData.selectedBrand;
@@ -757,6 +771,7 @@
                 updateSectionSelector(currentSection); renderAccounts(true);
                 alert("Session restaurée !");
             } catch (err) { alert("Erreur fichier JSON."); }
+            event.target.value = ''; // Réinitialisation de l'input file
         };
         reader.readAsText(file);
     }
@@ -768,7 +783,7 @@
         }
         const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = `Livrable_Mapping_${getFormattedTimestamp()}.csv`; link.click();
+        link.download = `Adressage_${getFormattedTimestamp()}_${rows.length}_User-${getRandomToken()}.csv`; link.click();
     }
 
     function importAuditCSV(event) {
@@ -785,6 +800,7 @@
                 }
             });
             renderAccounts(true); renderDynamicGrid(); alert("CSV importé !");
+            event.target.value = '';
         };
         reader.readAsText(file, "UTF-8");
     }
